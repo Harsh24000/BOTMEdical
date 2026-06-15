@@ -1,0 +1,268 @@
+:root {
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --ink: #1f2a37;
+  --muted: #6b7280;
+  --brand: #0e7c66;
+  --brand-dark: #0a5c4c;
+  --border: #e3e8ef;
+  --user: #e8f3ff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header h1 {
+  margin: 0;
+  color: var(--brand);
+  font-size: 28px;
+}
+.tagline {
+  margin: 2px 0 20px;
+  color: var(--muted);
+}
+
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 13px;
+}
+
+.centered {
+  max-width: 620px;
+  margin: 40px auto;
+}
+
+.upload h2 {
+  margin-top: 0;
+}
+.dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--panel);
+  color: var(--muted);
+  transition: border-color 0.15s;
+}
+.dropzone:hover {
+  border-color: var(--brand);
+}
+.error {
+  color: #b91c1c;
+}
+.disclaimer-top {
+  margin-top: 16px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.left,
+.right {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.right {
+  position: sticky;
+  top: 24px;
+}
+
+.reset {
+  background: none;
+  border: none;
+  color: var(--brand);
+  cursor: pointer;
+  padding: 0 0 12px;
+  font-size: 14px;
+}
+
+.analysis h2 {
+  margin-top: 0;
+}
+.summary {
+  font-weight: 600;
+}
+.analysis section {
+  margin-top: 18px;
+}
+.analysis h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+table.findings {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+table.findings th,
+table.findings td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: capitalize;
+  background: #eef2f7;
+  color: #374151;
+}
+.badge-normal {
+  background: #e7f7ee;
+  color: #047857;
+}
+.badge-low,
+.badge-borderline {
+  background: #fff4e5;
+  color: #b45309;
+}
+.badge-high {
+  background: #fde8e8;
+  color: #b91c1c;
+}
+.badge-critical {
+  background: #b91c1c;
+  color: #fff;
+}
+.sev-low {
+  background: #e7f7ee;
+  color: #047857;
+}
+.sev-moderate {
+  background: #fff4e5;
+  color: #b45309;
+}
+.sev-high {
+  background: #fde8e8;
+  color: #b91c1c;
+}
+
+ul.risks {
+  list-style: none;
+  padding: 0;
+}
+ul.risks li {
+  margin-bottom: 10px;
+}
+
+.disclaimer {
+  margin-top: 20px;
+  padding: 12px;
+  background: #fbfcfe;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Chat */
+.chat {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px);
+  min-height: 420px;
+}
+.chat h2 {
+  margin-top: 0;
+}
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 6px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+.suggestions button:hover {
+  border-color: var(--brand);
+}
+
+.msg {
+  margin: 12px 0;
+}
+.msg-role {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.msg-content {
+  white-space: pre-wrap;
+  line-height: 1.5;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+.msg-user .msg-content {
+  background: var(--user);
+}
+
+.composer {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.composer input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+.composer button,
+.dropzone {
+  font-size: 14px;
+}
+.composer button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+.composer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
