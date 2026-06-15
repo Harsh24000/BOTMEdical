@@ -7,7 +7,7 @@ export default defineConfig({
     port: 5173,
     // Proxy API calls to the FastAPI backend during development.
     proxy: {
-      "/api": "https://botmedical-production.up.railway.app",
+      "/api": "http://localhost:8000",
     },
   },
 });
