@@ -1,106 +1,47 @@
-"""Groq integration: structured report analysis + a research-capable chat.
-
-Uses the Groq SDK (OpenAI-compatible). The analysis call uses Groq JSON mode to
-return structured data; the chat uses the `groq/compound` model, which has
-built-in web search so the assistant can do real medical research and cite
-sources.
-"""
-
-import json
-from collections.abc import Iterator
-
-import groq
-
-from .config import get_settings
-from .models import ANALYSIS_JSON_SCHEMA
-from .prompts import ANALYSIS_SYSTEM, build_chat_system
-from .store import Session
-
-_settings = get_settings()
-_client = groq.Groq(api_key=_settings.groq_api_key or None)
-
-
-def analyze_report(report_text: str) -> dict:
-    """Run a one-shot structured analysis of the extracted report text."""
-    system = (
-        ANALYSIS_SYSTEM
-        + "\n\nReturn a JSON object that conforms exactly to this JSON Schema "
-        + "(same keys, same nesting):\n"
-        + json.dumps(ANALYSIS_JSON_SCHEMA)
-    )
-    response = _client.chat.completions.create(
-        model=_settings.analysis_model,
-        temperature=0.2,
-        max_tokens=3000,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system},
-            {
-                "role": "user",
-                "content": (
-                    "Analyze the following lab report and return the structured "
-                    "JSON analysis.\n\n=== LAB REPORT ===\n" + report_text
-                ),
-            },
-        ],
-    )
-    return json.loads(response.choices[0].message.content)
-
-
-def summarize_analysis_for_context(analysis: dict) -> str:
-    """Compact, human-readable rendering of the analysis to seed chat context."""
-    lines: list[str] = [f"Overall: {analysis.get('overall_assessment', '')}"]
-
-    findings = analysis.get("findings", [])
-    notable = [f for f in findings if f.get("status") not in ("normal", "unknown")]
-    if notable:
-        lines.append("Notable findings:")
-        for f in notable:
-            lines.append(
-                f"- {f['test_name']}: {f['value']} (ref {f['reference_range']}) "
-                f"[{f['status']}] — {f['significance']}"
-            )
-
-    risks = analysis.get("potential_risks", [])
-    if risks:
-        lines.append("Potential risks:")
-        for r in risks:
-            lines.append(f"- [{r['severity']}] {r['risk']}: {r['explanation']}")
-
-    return "\n".join(lines)
-
-
 def stream_chat(session: Session, user_message: str) -> Iterator[str]:
-    """Stream a chat reply as plain text chunks.
+    # Build a concise summary from structured analysis — NOT raw PDF text
+    analysis = session.analysis or {}
+    findings = analysis.get("findings", [])
+    overall_risk = analysis.get("overall_risk", "")
+    next_steps = analysis.get("next_steps", [])
 
-    Appends the user message and the assistant reply to the session history.
-    The compound model performs any web searches server-side and streams the
-    final answer text.
-    """
-    session.messages.append({"role": "user", "content": user_message})
+    summary_lines = []
+    if overall_risk:
+        summary_lines.append(f"Overall Risk: {overall_risk}")
+    for f in findings[:10]:  # max 10 findings to stay within token limits
+        name = f.get("name", "")
+        value = f.get("value", "")
+        status = f.get("status", "")
+        interpretation = f.get("interpretation", "")
+        if name:
+            summary_lines.append(f"- {name}: {value} → {status}. {interpretation}")
+    if next_steps:
+        summary_lines.append("Suggested next steps: " + "; ".join(next_steps[:3]))
 
-    system_prompt = build_chat_system(
-        session.report_text,
-        summarize_analysis_for_context(session.analysis),
+    report_summary = (
+        "\n".join(summary_lines) if summary_lines else "No report data available yet."
     )
 
-    # OpenAI-style message list: system prompt first, then the conversation.
-    messages = [{"role": "system", "content": system_prompt}, *session.messages]
+    system = build_chat_system(report_summary)
 
-    parts: list[str] = []
+    # Keep only last 8 messages to avoid token overflow
+    recent_history = session.history[-8:] if len(session.history) > 8 else session.history
+
+    messages = (
+        [{"role": "system", "content": system}]
+        + recent_history
+        + [{"role": "user", "content": user_message}]
+    )
+
     stream = _client.chat.completions.create(
         model=_settings.chat_model,
-        temperature=0.3,
-        max_tokens=2000,
-        stream=True,
         messages=messages,
+        stream=True,
+        max_tokens=350,   # Hard cap — keeps answers short
+        temperature=0.4,
     )
+
     for chunk in stream:
-        if not chunk.choices:
-            continue
         delta = chunk.choices[0].delta.content
         if delta:
-            parts.append(delta)
             yield delta
-
-    session.messages.append({"role": "assistant", "content": "".join(parts)})
