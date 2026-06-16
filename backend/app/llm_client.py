@@ -44,24 +44,26 @@ def analyze_report(report_text: str) -> dict:
 def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     """Stream a chat response grounded in the structured analysis."""
     try:
-        # Build summary from structured analysis — NOT raw PDF text
+        # Build summary using the correct keys from models.py
         analysis = getattr(session, "analysis", {}) or {}
         findings = analysis.get("findings", [])
-        overall_risk = analysis.get("overall_risk", "")
-        next_steps = analysis.get("next_steps", [])
+        overall_assessment = analysis.get("overall_assessment", "")
+        next_steps = analysis.get("recommended_next_steps", [])
 
         summary_lines = []
-        if overall_risk:
-            summary_lines.append(f"Overall Risk: {overall_risk}")
+        if overall_assessment:
+            summary_lines.append(f"Overall Assessment: {overall_assessment}")
+            
         for f in findings[:10]:
-            name = f.get("name", "")
+            name = f.get("test_name", "")
             value = f.get("value", "")
             status = f.get("status", "")
-            interpretation = f.get("interpretation", "")
+            interpretation = f.get("significance", "")
             if name:
                 summary_lines.append(
                     f"- {name}: {value} → {status}. {interpretation}"
                 )
+                
         if next_steps:
             summary_lines.append(
                 "Suggested next steps: " + "; ".join(str(s) for s in next_steps[:3])
@@ -85,9 +87,8 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
             + [{"role": "user", "content": user_message}]
         )
 
-        # Use llama-3.3-70b — reliable streaming, no silent empty responses
         stream = _client.chat.completions.create(
-                  model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=messages,
             stream=True,
             max_tokens=350,
