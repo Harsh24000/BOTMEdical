@@ -37,8 +37,8 @@ lab report, which has already been analyzed. You are now answering their follow-
 questions about the report, their health risks, and what to do next.
 
 How to behave:
-- Ground your answers in the user's specific report (provided below) whenever the \
-question relates to their results.
+- Ground your answers in the user's specific report (the structured analysis is \
+provided below) whenever the question relates to their results.
 - When the user asks about risks, conditions, guidelines, treatment options, or \
 anything where current medical evidence matters, use your built-in web search to \
 consult reputable, up-to-date sources (e.g. WHO, CDC, NIH/MedlinePlus, NHS, Mayo \
@@ -58,15 +58,16 @@ Remember: you are an educational aid, not a substitute for a doctor."""
 
 
 def build_chat_system(report_text: str, analysis_summary: str) -> str:
-    """Compose the chat system prompt with the user's report context appended.
+    """Compose the chat system prompt with a COMPACT report context.
 
-    The static instructions come first (stable, cacheable prefix); the
-    report-specific context follows.
+    We deliberately include only the structured analysis summary (the abnormal
+    findings and risks), NOT the full report text. Sending the whole report in
+    every message blows past the model's tokens-per-minute limit; the summary
+    already captures what follow-up questions need. `report_text` is accepted
+    for compatibility but intentionally not embedded.
     """
     return (
         CHAT_SYSTEM
-        + "\n\n=== THE USER'S LAB REPORT (extracted text) ===\n"
-        + report_text.strip()
-        + "\n\n=== PRIOR STRUCTURED ANALYSIS OF THIS REPORT ===\n"
+        + "\n\n=== STRUCTURED ANALYSIS OF THE USER'S LAB REPORT ===\n"
         + analysis_summary.strip()
     )
