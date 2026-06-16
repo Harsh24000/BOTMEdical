@@ -77,8 +77,8 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
 
         system = build_chat_system(report_summary)
 
-        # Keep only last 8 messages to avoid token overflow
-        history = getattr(session, "history", []) or []
+        # Fix memory bug: properly read and store chat history
+        history = getattr(session, "messages", []) or []
         recent_history = history[-8:] if len(history) > 8 else history
 
         messages = (
@@ -91,11 +91,12 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=messages,
             stream=True,
-            max_tokens=350,
+            max_tokens=450,
             temperature=0.4,
         )
 
         got_content = False
+        full_response = ""
         for chunk in stream:
             content = None
             try:
@@ -104,11 +105,18 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
                 continue
             if content is not None:
                 got_content = True
+                full_response += content
                 yield content
 
-        # If model returned nothing at all, send a fallback
+        # Save conversation to memory so bot remembers context next time
         if not got_content:
-            yield "I'm sorry, I couldn't process that right now. Could you try rephrasing your question? 😊"
+            fallback = "I'm sorry, I couldn't process that right now. Could you try rephrasing your question? 😊"
+            session.messages.append({"role": "user", "content": user_message})
+            session.messages.append({"role": "assistant", "content": fallback})
+            yield fallback
+        else:
+            session.messages.append({"role": "user", "content": user_message})
+            session.messages.append({"role": "assistant", "content": full_response})
 
     except groq.RateLimitError:
         yield "I'm getting too many requests right now. Please wait a moment and try again. 😊"
