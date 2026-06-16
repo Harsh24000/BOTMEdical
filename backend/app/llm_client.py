@@ -43,6 +43,7 @@ def analyze_report(report_text: str) -> dict:
 
 def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     """Stream a chat response grounded in the structured analysis."""
+
     # Build a concise summary from structured analysis — NOT raw PDF text
     analysis = session.analysis or {}
     findings = analysis.get("findings", [])
@@ -52,7 +53,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     summary_lines = []
     if overall_risk:
         summary_lines.append(f"Overall Risk: {overall_risk}")
-    for f in findings[:10]:  # max 10 findings to stay within token limits
+    for f in findings[:10]:
         name = f.get("name", "")
         value = f.get("value", "")
         status = f.get("status", "")
@@ -83,8 +84,10 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         + [{"role": "user", "content": user_message}]
     )
 
+    # Use llama-3.3-70b-versatile — reliable, fast, supports streaming well
+    # groq/compound can silently return empty chunks
     stream = _client.chat.completions.create(
-        model=_settings.chat_model,
+        model="llama-3.3-70b-versatile",
         messages=messages,
         stream=True,
         max_tokens=350,
@@ -92,6 +95,9 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     )
 
     for chunk in stream:
-        delta = chunk.choices[0].delta.content
-        if delta:
-            yield delta
+        try:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+        except (AttributeError, IndexError):
+            continue
