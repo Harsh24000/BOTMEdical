@@ -31,7 +31,7 @@ def analyze_report(report_text: str) -> dict:
     response = _client.chat.completions.create(
         model=_settings.analysis_model,
         temperature=0.2,
-        max_tokens=8000,
+        max_tokens=3000,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system},
@@ -91,7 +91,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     stream = _client.chat.completions.create(
         model=_settings.chat_model,
         temperature=0.3,
-        max_tokens=4000,
+        max_tokens=2000,
         stream=True,
         messages=messages,
     )
