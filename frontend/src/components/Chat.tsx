@@ -12,15 +12,62 @@ const SUGGESTIONS = [
   "What lifestyle changes could help improve these numbers?",
 ];
 
+// Fallback for Safari/Chrome support
+const SpeechRecognition = 
+  (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
 export default function Chat({ sessionId }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // 🎤 1. VOICE INPUT: Listen to the user's voice
+  function startListening() {
+    if (!SpeechRecognition) {
+      alert("Your browser does not support Voice Input. Please use Google Chrome.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript); // Automatically fill the input box with their words!
+      setIsListening(false);
+    };
+    
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    
+    recognition.start();
+  }
+
+  // 🗣️ 2. VOICE OUTPUT: Read Dr. Gyan's answer out loud
+  function speakText(text: string) {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel(); // Stop any ongoing speech
+      
+      // Clean up text (remove markdown formatting and the button text)
+      const cleanText = text
+        .split("|SUGGESTIONS|")[0] 
+        .replace(/[\*\#\_]/g, '') 
+        .trim();
+        
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = "en-US";
+      utterance.rate = 1.0; // Normal speaking speed
+      window.speechSynthesis.speak(utterance);
+    }
+  }
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -28,14 +75,23 @@ export default function Chat({ sessionId }: Props) {
 
     setInput("");
     setBusy(true);
+    
+    // Stop speaking if the user sends a new message
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
     setMessages((m) => [
       ...m,
       { role: "user", content: trimmed },
       { role: "assistant", content: "" },
     ]);
 
+    let fullResponse = "";
+
     try {
       await streamChat(sessionId, trimmed, (chunk) => {
+        fullResponse += chunk; // Collect the text as it streams in
         setMessages((m) => {
           const next = [...m];
           next[next.length - 1] = {
@@ -45,6 +101,10 @@ export default function Chat({ sessionId }: Props) {
           return next;
         });
       });
+      
+      // Speak the final answer out loud!
+      speakText(fullResponse);
+      
     } catch (e) {
       setMessages((m) => {
         const next = [...m];
@@ -61,7 +121,6 @@ export default function Chat({ sessionId }: Props) {
     }
   }
 
-  // Parses the response and renders clickable buttons for suggestions
   function renderMessage(content: string, isLast: boolean) {
     if (!content) return busy && isLast ? "…" : "";
     
@@ -72,7 +131,7 @@ export default function Chat({ sessionId }: Props) {
       
       const suggestions = suggestionsPart
         .split("\n")
-        .map((s) => s.trim().replace(/^-\s*/, '').replace(/^\d+\.\s*/, '')) // clean up formatting
+        .map((s) => s.trim().replace(/^-\s*/, '').replace(/^\d+\.\s*/, ''))
         .filter((s) => s.length > 0);
 
       return (
@@ -105,7 +164,6 @@ export default function Chat({ sessionId }: Props) {
         </>
       );
     }
-
     return <div style={{ whiteSpace: "pre-wrap" }}>{content}</div>;
   }
 
@@ -127,7 +185,7 @@ export default function Chat({ sessionId }: Props) {
 
         {messages.map((m, i) => (
           <div key={i} className={`msg msg-${m.role}`}>
-            <div className="msg-role">{m.role === "user" ? "You" : "NirogGyan"}</div>
+            <div className="msg-role">{m.role === "user" ? "You" : "Dr. Gyan"}</div>
             <div className="msg-content">
               {renderMessage(m.content, i === messages.length - 1)}
             </div>
@@ -138,21 +196,57 @@ export default function Chat({ sessionId }: Props) {
 
       <form
         className="composer"
+        style={{ display: "flex", gap: "8px", alignItems: "center" }}
         onSubmit={(e) => {
           e.preventDefault();
           send(input);
         }}
       >
+        {/* The New Microphone Button */}
+        <button 
+          type="button" 
+          onClick={startListening}
+          disabled={busy}
+          title="Click to speak"
+          style={{
+            background: isListening ? "#ef4444" : "#e5e7eb",
+            color: isListening ? "white" : "#374151",
+            border: "none",
+            borderRadius: "50%",
+            width: "42px",
+            height: "42px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontSize: "1.2rem",
+            flexShrink: 0,
+            animation: isListening ? "pulse 1.5s infinite" : "none"
+          }}
+        >
+          🎤
+        </button>
+
         <input
           value={input}
-          placeholder="Ask about your risks, results, or next steps…"
+          placeholder={isListening ? "Listening... Speak now" : "Type or speak your question…"}
           onChange={(e) => setInput(e.target.value)}
-          disabled={busy}
+          disabled={busy || isListening}
+          style={{ flexGrow: 1 }}
         />
         <button type="submit" disabled={busy || !input.trim()}>
           {busy ? "…" : "Send"}
         </button>
       </form>
+
+      {/* Animation for the pulsating red microphone */}
+      <style>{`
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+      `}</style>
     </div>
   );
 }
