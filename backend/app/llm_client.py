@@ -1,4 +1,48 @@
+"""Groq integration: structured report analysis + a research-capable chat."""
+
+import json
+from collections.abc import Iterator
+
+import groq
+
+from .config import get_settings
+from .models import ANALYSIS_JSON_SCHEMA
+from .prompts import ANALYSIS_SYSTEM, build_chat_system
+from .store import Session
+
+_settings = get_settings()
+_client = groq.Groq(api_key=_settings.groq_api_key or None)
+
+
+def analyze_report(report_text: str) -> dict:
+    """Run a one-shot structured analysis of the extracted report text."""
+    system = (
+        ANALYSIS_SYSTEM
+        + "\n\nReturn a JSON object that conforms exactly to this JSON Schema "
+        + "(same keys, same nesting):\n"
+        + json.dumps(ANALYSIS_JSON_SCHEMA)
+    )
+    response = _client.chat.completions.create(
+        model=_settings.analysis_model,
+        temperature=0.2,
+        max_tokens=3000,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system},
+            {
+                "role": "user",
+                "content": (
+                    "Analyze the following lab report and return the structured "
+                    "JSON analysis.\n\n=== LAB REPORT ===\n" + report_text
+                ),
+            },
+        ],
+    )
+    return json.loads(response.choices[0].message.content)
+
+
 def stream_chat(session: Session, user_message: str) -> Iterator[str]:
+    """Stream a chat response grounded in the structured analysis."""
     # Build a concise summary from structured analysis — NOT raw PDF text
     analysis = session.analysis or {}
     findings = analysis.get("findings", [])
@@ -14,9 +58,13 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         status = f.get("status", "")
         interpretation = f.get("interpretation", "")
         if name:
-            summary_lines.append(f"- {name}: {value} → {status}. {interpretation}")
+            summary_lines.append(
+                f"- {name}: {value} → {status}. {interpretation}"
+            )
     if next_steps:
-        summary_lines.append("Suggested next steps: " + "; ".join(next_steps[:3]))
+        summary_lines.append(
+            "Suggested next steps: " + "; ".join(next_steps[:3])
+        )
 
     report_summary = (
         "\n".join(summary_lines) if summary_lines else "No report data available yet."
@@ -25,7 +73,9 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     system = build_chat_system(report_summary)
 
     # Keep only last 8 messages to avoid token overflow
-    recent_history = session.history[-8:] if len(session.history) > 8 else session.history
+    recent_history = (
+        session.history[-8:] if len(session.history) > 8 else session.history
+    )
 
     messages = (
         [{"role": "system", "content": system}]
@@ -37,7 +87,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         model=_settings.chat_model,
         messages=messages,
         stream=True,
-        max_tokens=350,   # Hard cap — keeps answers short
+        max_tokens=350,
         temperature=0.4,
     )
 
