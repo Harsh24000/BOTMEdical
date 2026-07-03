@@ -1,5 +1,3 @@
-import type { ChatMessage } from "../types";
-
 const SUGGESTIONS = [
   "What are my biggest health risks based on this report?",
   "Which results should I be most concerned about, and why?",
@@ -10,7 +8,7 @@ interface Props {
   sessionId: string;
 }
 
-export default function Chat({ sessionId }: Props) {
+export default function Chat(_props: Props) {
   return (
     <div className="chat" style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <h2>Ask about your results</h2>
