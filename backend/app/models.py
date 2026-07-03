@@ -1,12 +1,10 @@
 from typing import Literal
-
 from pydantic import BaseModel
 
 # ---- Structured analysis schema -------------------------------------------------
 
 FindingStatus = Literal["normal", "low", "high", "borderline", "critical", "unknown"]
 RiskSeverity = Literal["low", "moderate", "high"]
-
 
 class Finding(BaseModel):
     test_name: str
@@ -15,14 +13,14 @@ class Finding(BaseModel):
     status: FindingStatus
     significance: str
 
-
 class PotentialRisk(BaseModel):
     risk: str
     explanation: str
     severity: RiskSeverity
 
-
 class ReportAnalysis(BaseModel):
+    wellness_score: int
+    percentile_breakdown: str
     patient_summary: str
     overall_assessment: str
     findings: list[Finding]
@@ -32,13 +30,18 @@ class ReportAnalysis(BaseModel):
     questions_for_doctor: list[str]
     disclaimer: str
 
-
-# JSON Schema handed to Claude via output_config.format. Kept in sync with
-# ReportAnalysis above. All objects use additionalProperties: false and list
-# every property as required (a requirement of the structured-output API).
+# JSON Schema handed to Claude/Groq via output_config.format.
 ANALYSIS_JSON_SCHEMA: dict = {
     "type": "object",
     "properties": {
+        "wellness_score": {
+            "type": "integer",
+            "description": "A calculated overall health score from 1 to 100 based on the report findings.",
+        },
+        "percentile_breakdown": {
+            "type": "string",
+            "description": "An ASCII tree formatting the user's percentile ranking against their demographic.",
+        },
         "patient_summary": {
             "type": "string",
             "description": "1-2 sentence plain-language summary of who/what this report covers.",
@@ -84,7 +87,6 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "recommended_next_steps": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Concrete, actionable next steps (e.g. retest, see a specialist).",
         },
         "lifestyle_recommendations": {
             "type": "array",
@@ -93,11 +95,12 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "questions_for_doctor": {
             "type": "array",
             "items": {"type": "string"},
-            "description": "Useful questions the user could ask their physician.",
         },
         "disclaimer": {"type": "string"},
     },
     "required": [
+        "wellness_score",
+        "percentile_breakdown",
         "patient_summary",
         "overall_assessment",
         "findings",
@@ -110,19 +113,13 @@ ANALYSIS_JSON_SCHEMA: dict = {
     "additionalProperties": False,
 }
 
-
-# ---- API request/response models ------------------------------------------------
-
-
 class UploadResponse(BaseModel):
     session_id: str
     analysis: ReportAnalysis
 
-
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
-
 
 class ChatRequest(BaseModel):
     session_id: str
