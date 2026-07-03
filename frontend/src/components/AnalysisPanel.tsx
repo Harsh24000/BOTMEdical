@@ -5,10 +5,6 @@ interface Props {
 }
 
 export default function AnalysisPanel({ analysis }: Props) {
-  const scoreColor = 
-    analysis.wellness_score >= 80 ? "#10b981" : 
-    analysis.wellness_score >= 50 ? "#f59e0b" : "#ef4444";
-
   const scoreGradient = 
     analysis.wellness_score >= 80 ? "linear-gradient(135deg, #d1fae5, #10b981)" : 
     analysis.wellness_score >= 50 ? "linear-gradient(135deg, #fef3c7, #f59e0b)" : 
