@@ -23,6 +23,8 @@ export interface PotentialRisk {
 }
 
 export interface ReportAnalysis {
+  wellness_score: number;
+  percentile_breakdown: string;
   patient_summary: string;
   overall_assessment: string;
   findings: Finding[];
