@@ -2,9 +2,12 @@ import type { UploadResponse } from "./types";
 
 const BASE = "/api";
 
-export async function uploadReport(file: File): Promise<UploadResponse> {
+export async function uploadReport(file: File, location?: string): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
+  if (location) {
+    form.append("location", location);
+  }
 
   const res = await fetch(`${BASE}/upload`, { method: "POST", body: form });
   if (!res.ok) {
