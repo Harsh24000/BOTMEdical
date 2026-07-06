@@ -1,7 +1,7 @@
 import uuid
 
 import groq
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -13,29 +13,22 @@ from .store import Session, get_session, save_session
 
 settings = get_settings()
 
-app = FastAPI(title="NirogGyan Lab Report Assistant", version="1.0.0")
+app = FastAPI(title="NirogGyan API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],  # Adjust in production
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
-
-
-@app.get("/api/health")
-def health() -> dict:
-    return {
-        "status": "ok",
-        "analysis_model": settings.analysis_model,
-        "chat_model": settings.chat_model,
-    }
-
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_report(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_report(
+    file: UploadFile = File(...),
+    location: str | None = Form(None)
+) -> UploadResponse:
     if not settings.groq_api_key:
         raise HTTPException(500, "Server is missing GROQ_API_KEY.")
 
@@ -52,49 +45,30 @@ async def upload_report(file: UploadFile = File(...)) -> UploadResponse:
         raise HTTPException(422, str(exc)) from exc
 
     try:
-        analysis = analyze_report(report_text)
+        analysis = analyze_report(report_text, location)
     except groq.APIError as exc:
         raise HTTPException(502, f"Analysis failed: {exc}") from exc
 
-    try:
-        validated = ReportAnalysis(**analysis)
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(502, f"Model returned an unexpected analysis format: {exc}") from exc
-
-    session = Session(
-        session_id=uuid.uuid4().hex,
-        report_text=report_text,
-        analysis=analysis,
-    )
+    session_id = str(uuid.uuid4())
+    session = Session(session_id=session_id, report_text=report_text, analysis=analysis)
     save_session(session)
 
-    return UploadResponse(session_id=session.session_id, analysis=validated)
+    return UploadResponse(session_id=session_id, analysis=analysis)
+
+
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
 
 @app.post("/api/chat")
-def chat(req: ChatRequest) -> StreamingResponse:
+async def chat_endpoint(req: ChatRequest):
     if not settings.groq_api_key:
         raise HTTPException(500, "Server is missing GROQ_API_KEY.")
 
     session = get_session(req.session_id)
-    if session is None:
-        raise HTTPException(404, "Unknown session. Please upload a report first.")
+    if not session:
+        raise HTTPException(404, "Session not found or expired.")
 
-    message = req.message.strip()
-    if not message:
-        raise HTTPException(400, "Message cannot be empty.")
-
-    def generate():
-        try:
-            for chunk in stream_chat(session, message):
-                yield chunk
-        except groq.APIError as exc:  # surface API errors into the stream
-            yield f"\n\n[Error: {exc}]"
-
-    # Plain text/event-stream-like chunked response; the frontend reads the body
-    # incrementally. Disable buffering proxies may add.
+    # stream_chat yields string chunks directly
     return StreamingResponse(
-        generate(),
-        media_type="text/plain; charset=utf-8",
-        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+        stream_chat(session, req.message), media_type="text/plain"
     )
