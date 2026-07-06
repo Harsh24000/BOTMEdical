@@ -22,7 +22,7 @@ export default function AnalysisPanel({ analysis }: Props) {
         fontSize: "1.1rem",
         fontWeight: "500"
       }}>
-        <strong style={{ color: "#1e293b" }}>Cohort Baseline: </strong>
+        <strong style={{ color: "#1e293b" }}>Epidemiological Risk Factor: </strong>
         {analysis.cohort_risk}
       </div>
 
