@@ -1,126 +1,44 @@
 from typing import Literal
 from pydantic import BaseModel
 
-# ---- Structured analysis schema -------------------------------------------------
-
-FindingStatus = Literal["normal", "low", "high", "borderline", "critical", "unknown"]
-RiskSeverity = Literal["low", "moderate", "high"]
-
-class Finding(BaseModel):
-    test_name: str
-    value: str
-    reference_range: str
-    status: FindingStatus
-    significance: str
-
-class PotentialRisk(BaseModel):
-    risk: str
-    explanation: str
-    severity: RiskSeverity
+class Alert(BaseModel):
+    title: str
+    description: str
+    severity: Literal["red", "orange"]
 
 class ReportAnalysis(BaseModel):
-    wellness_score: int
-    percentile_breakdown: str
-    patient_summary: str
-    overall_assessment: str
-    findings: list[Finding]
-    potential_risks: list[PotentialRisk]
-    recommended_next_steps: list[str]
-    lifestyle_recommendations: list[str]
-    questions_for_doctor: list[str]
+    cohort_risk: str
+    alerts: list[Alert]
     disclaimer: str
 
 # JSON Schema handed to Claude/Groq via output_config.format.
 ANALYSIS_JSON_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "wellness_score": {
-            "type": "integer",
-            "description": "A calculated overall health score from 1 to 100 based on the report findings.",
-        },
-        "percentile_breakdown": {
+        "cohort_risk": {
             "type": "string",
-            "description": "An ASCII tree formatting the user's percentile ranking against their demographic.",
+            "description": "A cohort-level risk statement based on age, gender, or general population (e.g. '22-25 year old males are more susceptible to...').",
         },
-        "patient_summary": {
-            "type": "string",
-            "description": "1-2 sentence plain-language summary of who/what this report covers.",
-        },
-        "overall_assessment": {
-            "type": "string",
-            "description": "A short, calm overview of what the results indicate as a whole.",
-        },
-        "findings": {
+        "alerts": {
             "type": "array",
+            "description": "1 to 3 critical color-coded alerts based on the most severe findings in the report.",
             "items": {
                 "type": "object",
                 "properties": {
-                    "test_name": {"type": "string"},
-                    "value": {"type": "string"},
-                    "reference_range": {"type": "string"},
-                    "status": {
-                        "type": "string",
-                        "enum": ["normal", "low", "high", "borderline", "critical", "unknown"],
-                    },
-                    "significance": {
-                        "type": "string",
-                        "description": "Plain-language meaning of this specific result.",
-                    },
+                    "title": {"type": "string"},
+                    "description": {"type": "string"},
+                    "severity": {"type": "string", "enum": ["red", "orange"]},
                 },
-                "required": ["test_name", "value", "reference_range", "status", "significance"],
+                "required": ["title", "description", "severity"],
                 "additionalProperties": False,
             },
-        },
-        "potential_risks": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "risk": {"type": "string"},
-                    "explanation": {"type": "string"},
-                    "severity": {"type": "string", "enum": ["low", "moderate", "high"]},
-                },
-                "required": ["risk", "explanation", "severity"],
-                "additionalProperties": False,
-            },
-        },
-        "recommended_next_steps": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "lifestyle_recommendations": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "questions_for_doctor": {
-            "type": "array",
-            "items": {"type": "string"},
         },
         "disclaimer": {"type": "string"},
     },
     "required": [
-        "wellness_score",
-        "percentile_breakdown",
-        "patient_summary",
-        "overall_assessment",
-        "findings",
-        "potential_risks",
-        "recommended_next_steps",
-        "lifestyle_recommendations",
-        "questions_for_doctor",
+        "cohort_risk",
+        "alerts",
         "disclaimer",
     ],
     "additionalProperties": False,
 }
-
-class UploadResponse(BaseModel):
-    session_id: str
-    analysis: ReportAnalysis
-
-class ChatMessage(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str
-
-class ChatRequest(BaseModel):
-    session_id: str
-    message: str
