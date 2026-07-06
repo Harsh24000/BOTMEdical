@@ -1,37 +1,14 @@
-export type FindingStatus =
-  | "normal"
-  | "low"
-  | "high"
-  | "borderline"
-  | "critical"
-  | "unknown";
-
 export type RiskSeverity = "low" | "moderate" | "high";
 
-export interface Finding {
-  test_name: string;
-  value: string;
-  reference_range: string;
-  status: FindingStatus;
-  significance: string;
-}
-
-export interface PotentialRisk {
-  risk: string;
-  explanation: string;
-  severity: RiskSeverity;
+export interface Alert {
+  title: string;
+  description: string;
+  severity: "red" | "orange";
 }
 
 export interface ReportAnalysis {
-  wellness_score: number;
-  percentile_breakdown: string;
-  patient_summary: string;
-  overall_assessment: string;
-  findings: Finding[];
-  potential_risks: PotentialRisk[];
-  recommended_next_steps: string[];
-  lifestyle_recommendations: string[];
-  questions_for_doctor: string[];
+  cohort_risk: string;
+  alerts: Alert[];
   disclaimer: string;
 }
 
