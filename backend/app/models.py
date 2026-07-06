@@ -42,3 +42,17 @@ ANALYSIS_JSON_SCHEMA: dict = {
     ],
     "additionalProperties": False,
 }
+
+# --- Missing Models added back below! ---
+
+class UploadResponse(BaseModel):
+    session_id: str
+    analysis: ReportAnalysis
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+class ChatRequest(BaseModel):
+    session_id: str
+    message: str
