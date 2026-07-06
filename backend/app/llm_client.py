@@ -14,8 +14,13 @@ _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
 
 
-def analyze_report(report_text: str) -> dict:
+def analyze_report(report_text: str, location: str | None = None) -> dict:
     """Run a one-shot structured analysis of the extracted report text."""
+    
+    location_context = ""
+    if location:
+        location_context = f"The user is located in {location}. Factor regional health trends for this demographic into your cohort risk.\n\n"
+
     system = (
         ANALYSIS_SYSTEM
         + "\n\nReturn a JSON object that conforms exactly to this JSON Schema "
@@ -32,7 +37,7 @@ def analyze_report(report_text: str) -> dict:
             {
                 "role": "user",
                 "content": (
-                    "Analyze the following lab report and return the structured "
+                    f"{location_context}Analyze the following lab report and return the structured "
                     "JSON analysis.\n\n=== LAB REPORT ===\n" + report_text
                 ),
             },
