@@ -31,8 +31,7 @@ export default function App() {
             <AnalysisPanel analysis={result.analysis} />
           </section>
           <section className="right">
-            {/* Pass the personalized questions to the chat paywall */}
-            <Chat sessionId={result.session_id} questions={result.analysis.questions_for_doctor} />
+            <Chat />
           </section>
         </main>
       )}
