@@ -5,64 +5,74 @@ interface Props {
 }
 
 export default function AnalysisPanel({ analysis }: Props) {
-  // Determine color based on wellness score
-  const scoreColor = 
-    analysis.wellness_score >= 80 ? "#16a34a" : 
-    analysis.wellness_score >= 50 ? "#ca8a04" : "#dc2626";
-
   return (
-    <div className="analysis">
-      <h2>Your report analysis</h2>
+    <div className="analysis" style={{ padding: "0.5rem" }}>
+      <h2 style={{ fontSize: "2rem", fontWeight: "800", color: "#111827", marginBottom: "0.5rem", marginTop: 0 }}>
+        Threat Detection Scan
+      </h2>
       
-      {/* Wellness Score UI */}
+      {/* Cohort Risk Statement */}
       <div style={{
-        display: "flex", 
-        alignItems: "center", 
-        gap: "1rem", 
-        padding: "1rem", 
-        background: "#f8fafc", 
-        borderRadius: "12px", 
-        border: "1px solid #e2e8f0",
-        marginBottom: "1rem"
+        background: "#f8fafc",
+        borderLeft: "4px solid #3b82f6",
+        padding: "1rem 1.5rem",
+        borderRadius: "0 8px 8px 0",
+        marginBottom: "2rem",
+        color: "#334155",
+        fontSize: "1.1rem",
+        fontWeight: "500"
       }}>
-        <div style={{
-          fontSize: "2rem", 
-          fontWeight: "bold", 
-          color: scoreColor,
-          background: "#fff",
-          padding: "1rem",
-          borderRadius: "50%",
-          width: "80px",
-          height: "80px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-        }}>
-          {analysis.wellness_score}
-        </div>
-        <div>
-          <h3 style={{ margin: 0, color: "#1e293b" }}>Wellness Score</h3>
-          <p style={{ margin: 0, color: "#64748b", fontSize: "0.9rem" }}>Out of 100 based on your biomarkers</p>
-        </div>
+        <strong style={{ color: "#1e293b" }}>Cohort Baseline: </strong>
+        {analysis.cohort_risk}
       </div>
 
-      {/* ASCII Percentile Tree */}
-      <div style={{
-        background: "#1e293b",
-        color: "#f8fafc",
-        padding: "1rem",
-        borderRadius: "8px",
-        marginBottom: "1.5rem",
-        overflowX: "auto"
-      }}>
-        <pre style={{ margin: 0, fontFamily: "monospace", fontSize: "0.85rem", lineHeight: "1.4" }}>
-          {analysis.percentile_breakdown}
-        </pre>
+      <h3 style={{ fontSize: "1.25rem", fontWeight: "700", color: "#ef4444", marginBottom: "1rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        ⚠️ Critical Alerts Detected
+      </h3>
+
+      {/* Alert Boxes */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
+        {analysis.alerts.map((alert, index) => (
+          <div key={index} style={{
+            background: alert.severity === "red" ? "#fef2f2" : "#fff7ed",
+            border: `1px solid ${alert.severity === "red" ? "#fca5a5" : "#fdba74"}`,
+            borderRadius: "12px",
+            padding: "1.5rem",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+            animation: "pulse-alert 2s infinite",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            <div style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "6px",
+              height: "100%",
+              background: alert.severity === "red" ? "#ef4444" : "#f97316"
+            }} />
+            <h4 style={{ 
+              margin: "0 0 0.5rem 0", 
+              color: alert.severity === "red" ? "#b91c1c" : "#c2410c", 
+              fontSize: "1.2rem", 
+              fontWeight: "700" 
+            }}>
+              {alert.title}
+            </h4>
+            <p style={{ margin: 0, color: "#475569", fontSize: "1.05rem", lineHeight: "1.5" }}>
+              {alert.description}
+            </p>
+          </div>
+        ))}
       </div>
 
-      <p className="summary">{analysis.patient_summary}</p>
-      <p>{analysis.overall_assessment}</p>
+      <style>{`
+        @keyframes pulse-alert {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+      `}</style>
     </div>
   );
 }
