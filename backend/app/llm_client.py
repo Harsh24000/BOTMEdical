@@ -9,20 +9,18 @@ from .config import get_settings
 from .models import ANALYSIS_JSON_SCHEMA
 from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
+from .verifier import verify_and_fix
 
 _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
 
 
-def analyze_report(report_text: str, location: str | None = None) -> dict:
-    """Run a one-shot structured analysis of the extracted report text."""
-    
-    location_context = ""
-    if location:
-        location_context = f"The user is located in {location}. Factor regional health trends for this demographic into your cohort risk.\n\n"
-
+def _call_groq_analysis(report_text: str, location_context: str, extra_instruction: str = "") -> dict:
+    """One raw call to the analysis model. Used for both the first attempt
+    and the corrective retry."""
     system = (
         ANALYSIS_SYSTEM
+        + extra_instruction
         + "\n\nReturn a JSON object that conforms exactly to this JSON Schema "
         + "(same keys, same nesting):\n"
         + json.dumps(ANALYSIS_JSON_SCHEMA)
@@ -46,10 +44,38 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     return json.loads(response.choices[0].message.content)
 
 
+def analyze_report(report_text: str, location: str | None = None) -> dict:
+    """Run a one-shot structured analysis of the extracted report text,
+    then verify the cohort_risk claim isn't a fabricated statistic."""
+
+    location_context = ""
+    if location:
+        location_context = (
+            f"The user is located in {location}. Factor regional health trends "
+            "for this demographic into your cohort risk.\n\n"
+        )
+
+    result = _call_groq_analysis(report_text, location_context)
+
+    def _retry(flagged_numbers: list[str]) -> dict:
+        correction_note = (
+            "\n\nIMPORTANT CORRECTION: Your previous response included the "
+            f"statistic(s) {flagged_numbers} in cohort_risk. These numbers do "
+            "not appear anywhere in the source report and are fabricated. "
+            "Regenerate cohort_risk WITHOUT inventing any percentage, "
+            "multiplier (e.g. '2x'), or population-comparison number. You may "
+            "only reference numbers that are explicitly present in the report "
+            "text, or use qualitative urgency language with no invented stats."
+        )
+        return _call_groq_analysis(report_text, location_context, correction_note)
+
+    result = verify_and_fix(result, report_text, _retry)
+    return result
+
+
 def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     """Stream a chat response grounded in the structured analysis."""
     try:
-        # Build summary using the correct keys from models.py
         analysis = getattr(session, "analysis", {}) or {}
         findings = analysis.get("findings", [])
         overall_assessment = analysis.get("overall_assessment", "")
@@ -58,7 +84,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         summary_lines = []
         if overall_assessment:
             summary_lines.append(f"Overall Assessment: {overall_assessment}")
-            
+
         for f in findings[:10]:
             name = f.get("test_name", "")
             value = f.get("value", "")
@@ -68,7 +94,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
                 summary_lines.append(
                     f"- {name}: {value} → {status}. {interpretation}"
                 )
-                
+
         if next_steps:
             summary_lines.append(
                 "Suggested next steps: " + "; ".join(str(s) for s in next_steps[:3])
@@ -82,7 +108,6 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
 
         system = build_chat_system(report_summary)
 
-        # Fix memory bug: properly read and store chat history
         history = getattr(session, "messages", []) or []
         recent_history = history[-8:] if len(history) > 8 else history
 
@@ -113,7 +138,6 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
                 full_response += content
                 yield content
 
-        # Save conversation to memory so bot remembers context next time
         if not got_content:
             fallback = "I'm sorry, I couldn't process that right now. Could you try rephrasing your question? 😊"
             session.messages.append({"role": "user", "content": user_message})
