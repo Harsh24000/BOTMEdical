@@ -52,8 +52,8 @@ def _ocr_pdf(data: bytes) -> str:
     client = groq.Groq(api_key=settings.groq_api_key or None)
     
     try:
-        response = client.chat.completions.create(
-            model="llama-3.2-11b-vision-instruct",
+            response = client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{"role": "user", "content": content}],
             temperature=0.1,
             max_tokens=4000,
