@@ -51,7 +51,7 @@ def _ocr_pdf(data: bytes) -> str:
     settings = get_settings()
     client = groq.Groq(api_key=settings.groq_api_key or None)
     
-      try:
+    try:
         response = client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{"role": "user", "content": content}],
@@ -61,6 +61,7 @@ def _ocr_pdf(data: bytes) -> str:
         return response.choices[0].message.content or ""
     except Exception as e:
         raise PdfExtractionError(f"OCR Vision API failed: {e}")
+
 
 def extract_text_from_pdf(data: bytes) -> str:
     """Extract text from a text-based PDF.
