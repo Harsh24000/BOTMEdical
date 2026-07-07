@@ -53,7 +53,7 @@ def _ocr_pdf(data: bytes) -> str:
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="llama-3.2-11b-vision-instruct",
             messages=[{"role": "user", "content": content}],
             temperature=0.1,
             max_tokens=4000,
