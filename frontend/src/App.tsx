@@ -46,7 +46,7 @@ export default function App() {
               />
             </div>
             <PremiumHook
-              previewText={result.analysis.premium_preview}
+              previewLines={result.analysis.premium_preview}
               onUpgrade={handleUpgradeClick}
             />
           </section>
