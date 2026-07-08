@@ -2,10 +2,17 @@ import { useState } from "react";
 import ReportUpload from "./components/ReportUpload";
 import AnalysisPanel from "./components/AnalysisPanel";
 import Chat from "./components/Chat";
+import PremiumHook from "./components/PremiumHook";
 import type { UploadResponse } from "./types";
 
 export default function App() {
   const [result, setResult] = useState<UploadResponse | null>(null);
+
+  function handleUpgradeClick() {
+    // Stub — no payment provider wired in yet.
+    // Replace with real checkout flow when Stripe/Razorpay is added.
+    alert("Upgrade flow coming soon!");
+  }
 
   return (
     <div className="app">
@@ -30,8 +37,14 @@ export default function App() {
             </button>
             <AnalysisPanel analysis={result.analysis} />
           </section>
-          <section className="right">
-            <Chat />
+          <section className="right" style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: 1, minHeight: 0 }}>
+              <Chat sessionId={result.session_id} />
+            </div>
+            <PremiumHook
+              previewText={result.analysis.premium_preview}
+              onUpgrade={handleUpgradeClick}
+            />
           </section>
         </main>
       )}
