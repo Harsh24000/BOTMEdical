@@ -9,15 +9,13 @@ from .config import get_settings
 from .models import ANALYSIS_JSON_SCHEMA
 from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
-from .verifier import verify_and_fix
+from .verifier import verify_and_fix, strip_alert_numbers
 
 _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
 
 
 def _call_groq_analysis(report_text: str, location_context: str, extra_instruction: str = "") -> dict:
-    """One raw call to the analysis model. Used for both the first attempt
-    and the corrective retry."""
     system = (
         ANALYSIS_SYSTEM
         + extra_instruction
@@ -28,7 +26,7 @@ def _call_groq_analysis(report_text: str, location_context: str, extra_instructi
     response = _client.chat.completions.create(
         model=_settings.analysis_model,
         temperature=0.2,
-        max_tokens=3000,
+        max_tokens=4000,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system},
@@ -45,9 +43,10 @@ def _call_groq_analysis(report_text: str, location_context: str, extra_instructi
 
 
 def analyze_report(report_text: str, location: str | None = None) -> dict:
-    """Run a one-shot structured analysis of the extracted report text,
-    then verify the cohort_risk claim isn't a fabricated statistic."""
-
+    """Run a one-shot structured analysis, then apply both guardrails:
+    1. cohort_risk fabrication check (existing)
+    2. alert description number-stripping (new)
+    """
     location_context = ""
     if location:
         location_context = (
@@ -70,6 +69,7 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
         return _call_groq_analysis(report_text, location_context, correction_note)
 
     result = verify_and_fix(result, report_text, _retry)
+    result["alerts"] = strip_alert_numbers(result.get("alerts", []))
     return result
 
 
@@ -78,27 +78,21 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
     try:
         analysis = getattr(session, "analysis", {}) or {}
         findings = analysis.get("findings", [])
-        overall_assessment = analysis.get("overall_assessment", "")
-        next_steps = analysis.get("recommended_next_steps", [])
+        cohort_risk = analysis.get("cohort_risk", "")
 
         summary_lines = []
-        if overall_assessment:
-            summary_lines.append(f"Overall Assessment: {overall_assessment}")
+        if cohort_risk:
+            summary_lines.append(f"Overall Assessment: {cohort_risk}")
 
-        for f in findings[:10]:
+        for f in findings[:20]:
             name = f.get("test_name", "")
             value = f.get("value", "")
             status = f.get("status", "")
             interpretation = f.get("significance", "")
             if name:
                 summary_lines.append(
-                    f"- {name}: {value} → {status}. {interpretation}"
+                    f"- {name}: {value} -> {status}. {interpretation}"
                 )
-
-        if next_steps:
-            summary_lines.append(
-                "Suggested next steps: " + "; ".join(str(s) for s in next_steps[:3])
-            )
 
         report_summary = (
             "\n".join(summary_lines)
@@ -146,6 +140,8 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         else:
             session.messages.append({"role": "user", "content": user_message})
             session.messages.append({"role": "assistant", "content": full_response})
+            # Only count a successful exchange toward the free-question limit.
+            session.chat_count += 1
 
     except groq.RateLimitError:
         yield "I'm getting too many requests right now. Please wait a moment and try again. 😊"
