@@ -17,9 +17,19 @@ export async function uploadReport(file: File, location?: string): Promise<Uploa
   return res.json();
 }
 
+/** Thrown when the backend returns 402 — free question limit reached. */
+export class PaywallError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PaywallError";
+  }
+}
+
 /**
  * Send a chat message and stream the assistant reply.
  * `onChunk` is called with each incremental text chunk as it arrives.
+ * Throws `PaywallError` specifically when the free-question limit is hit,
+ * so the UI can distinguish "upgrade needed" from a generic failure.
  */
 export async function streamChat(
   sessionId: string,
@@ -31,6 +41,11 @@ export async function streamChat(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ session_id: sessionId, message }),
   });
+
+  if (res.status === 402) {
+    const detail = await res.json().catch(() => ({}));
+    throw new PaywallError(detail.detail || "Free question limit reached.");
+  }
 
   if (!res.ok || !res.body) {
     const detail = await res.json().catch(() => ({}));
