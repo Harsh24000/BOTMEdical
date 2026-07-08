@@ -4,9 +4,15 @@ import type { ChatMessage } from "../types";
 
 interface Props {
   sessionId: string;
+  starterSuggestions: string[];
 }
 
-export default function Chat({ sessionId }: Props) {
+// 5 credits = 1 question. Asking a question consumes the full balance,
+// so this is functionally the same 1-free-question gate as before, just
+// relabeled for future monetization (e.g. upgrade grants more credits).
+const TOTAL_CREDITS: number = 5;
+
+export default function Chat({ sessionId, starterSuggestions }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,22 +20,24 @@ export default function Chat({ sessionId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const creditsLeft = locked ? 0 : TOTAL_CREDITS;
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function handleSend() {
-    const text = input.trim();
-    if (!text || loading || locked) return;
+  async function sendMessage(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || loading || locked) return;
 
     setError(null);
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
     setLoading(true);
 
     try {
-      await streamChat(sessionId, text, (chunk) => {
+      await streamChat(sessionId, trimmed, (chunk) => {
         setMessages((prev) => {
           const next = [...prev];
           next[next.length - 1] = {
@@ -39,12 +47,11 @@ export default function Chat({ sessionId }: Props) {
           return next;
         });
       });
-      // First free exchange just completed successfully -> lock further input.
+      // 1 question = all 5 credits. Same gate as before, just relabeled.
       setLocked(true);
     } catch (err) {
       if (err instanceof PaywallError) {
         setLocked(true);
-        // Remove the empty assistant placeholder bubble since no answer came.
         setMessages((prev) => prev.slice(0, -1));
       } else {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -55,9 +62,19 @@ export default function Chat({ sessionId }: Props) {
     }
   }
 
+  function handleSend() {
+    sendMessage(input);
+  }
+
+  function handleSuggestionClick(suggestion: string) {
+    sendMessage(suggestion);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") handleSend();
   }
+
+  const showSuggestions = messages.length === 0 && !locked && starterSuggestions.length > 0;
 
   return (
     <div
@@ -78,16 +95,48 @@ export default function Chat({ sessionId }: Props) {
           🩺 Chat with Dr. Gyan
         </h3>
         <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-          Ask about your report. 1 free question.
+          {creditsLeft} credit{creditsLeft === 1 ? "" : "s"} left
         </p>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        {messages.length === 0 && (
+        {messages.length === 0 && !showSuggestions && (
           <p style={{ color: "#94a3b8", fontSize: "0.95rem", textAlign: "center", marginTop: "2rem" }}>
             Ask Dr. Gyan anything about your results.
           </p>
         )}
+
+        {showSuggestions && (
+          <div style={{ marginTop: "1rem" }}>
+            <p style={{ color: "#94a3b8", fontSize: "0.85rem", textAlign: "center", marginBottom: "0.75rem" }}>
+              Based on your report, you might want to ask:
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {starterSuggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSuggestionClick(s)}
+                  disabled={loading}
+                  style={{
+                    textAlign: "left",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "10px",
+                    padding: "0.6rem 0.9rem",
+                    fontSize: "0.9rem",
+                    color: "#334155",
+                    cursor: loading ? "default" : "pointer",
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "#f1f5f9")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {messages.map((m, i) => (
           <div
             key={i}
@@ -159,7 +208,7 @@ export default function Chat({ sessionId }: Props) {
           }}
         >
           <p style={{ margin: 0, color: "#475569", fontSize: "0.95rem" }}>
-            You've used your free question. Upgrade to keep chatting with Dr. Gyan.
+            You're out of credits. Upgrade to keep chatting with Dr. Gyan.
           </p>
           <button
             style={{
