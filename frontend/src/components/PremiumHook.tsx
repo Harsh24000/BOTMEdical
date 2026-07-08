@@ -1,5 +1,5 @@
 interface Props {
-  previewText: string;
+  previewLines: string[];
   onUpgrade: () => void;
 }
 
@@ -9,14 +9,13 @@ const FEATURES = [
   { icon: "🧑‍⚕️", label: "Coach Mode" },
 ];
 
-export default function PremiumHook({ previewText, onUpgrade }: Props) {
-  // premium_preview is 4-5 newline-separated coach lines from the backend.
-  // Splitting them out lets each render as its own blurred row, so it reads
-  // as a real multi-item plan rather than a blurred paragraph.
-  const lines = previewText
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+export default function PremiumHook({ previewLines, onUpgrade }: Props) {
+  // premium_preview now comes from the backend as a real JSON array (4-5
+  // items) rather than a single string with embedded \n — arrays are
+  // structurally enforced by the model's JSON schema, so we reliably get
+  // separate items instead of the model collapsing everything into one
+  // wrapped paragraph.
+  const lines = previewLines.map((l) => l.trim()).filter(Boolean);
 
   return (
     <div
