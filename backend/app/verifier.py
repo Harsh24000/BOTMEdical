@@ -1,12 +1,15 @@
 """
-Guardrail layer with two jobs:
+Guardrail layer with three jobs:
 
-1. (existing) Catch fabricated statistics in cohort_risk — numbers that
-   don't trace back to the source report text.
-2. (new) Defense-in-depth: strip any stray numeric value that leaks into
-   alert descriptions, even though the prompt already instructs the model
-   not to include them. Prompts get ignored sometimes; this makes the
-   "no numbers in alerts" rule structurally enforced, not just requested.
+1. Catch fabricated statistics in cohort_risk_base — numbers that don't
+   trace back to the source report text.
+2. Defense-in-depth: strip any stray numeric value that leaks into alert
+   descriptions, even though the prompt already instructs against it.
+3. Resolve epi_claim_candidate: only allow an external demographic/
+   epidemiological claim through if a live search call (performed by the
+   caller, injected as verify_fn) actually confirms it against a real
+   source. Fails closed — any error, timeout, or unconfirmed claim means
+   nothing is shown, per "verify or omit, never guess."
 """
 
 import logging
@@ -93,8 +96,8 @@ def log_fabrication_incident(report_text: str, claim_text: str, flagged: list[st
 
 
 def verify_and_fix(result: dict, report_text: str, retry_fn) -> dict:
-    """Main entry point for the cohort_risk fabrication guard (unchanged behavior)."""
-    claim = result.get("cohort_risk", "")
+    """Main entry point for the cohort_risk_base fabrication guard."""
+    claim = result.get("cohort_risk_base", "")
     unverified = find_unverified_numbers(claim, report_text)
 
     if not unverified:
@@ -107,7 +110,7 @@ def verify_and_fix(result: dict, report_text: str, retry_fn) -> dict:
         retried = None
 
     if retried is not None:
-        retried_claim = retried.get("cohort_risk", "")
+        retried_claim = retried.get("cohort_risk_base", "")
         still_unverified = find_unverified_numbers(retried_claim, report_text)
         if not still_unverified:
             return retried
@@ -115,5 +118,49 @@ def verify_and_fix(result: dict, report_text: str, retry_fn) -> dict:
         unverified = still_unverified
 
     log_fabrication_incident(report_text, claim, unverified)
-    result["cohort_risk"] = safe_fallback(result.get("alerts", []))
+    result["cohort_risk_base"] = safe_fallback(result.get("alerts", []))
     return result
+
+
+EPI_LOG_PATH = Path(__file__).parent / "epi_claim_verifications.log"
+
+
+def log_epi_verification(candidate: str, verified_claim: str | None, verified: bool) -> None:
+    """Audit trail of every epi-claim verification attempt, pass or fail."""
+    entry = (
+        f"{datetime.now(timezone.utc).isoformat()} | "
+        f"verified={verified} | "
+        f"candidate={candidate!r} | "
+        f"result={verified_claim!r}\n"
+    )
+    try:
+        with open(EPI_LOG_PATH, "a") as f:
+            f.write(entry)
+    except OSError:
+        logger.warning("Could not write epi-claim verification log", exc_info=True)
+
+
+def resolve_epi_claim(candidate: str, verify_fn) -> str:
+    """
+    Returns a verified, source-backed addendum to append to cohort_risk_base,
+    or an empty string if the claim couldn't be confirmed. Fails closed:
+    any exception, empty candidate, or "not verified" result means nothing
+    is shown to the patient — silence, not a placeholder or apology.
+    """
+    candidate = (candidate or "").strip()
+    if not candidate:
+        return ""
+
+    try:
+        verified, verified_claim = verify_fn(candidate)
+    except Exception:
+        logger.warning("Epi-claim verification call failed; omitting claim", exc_info=True)
+        log_epi_verification(candidate, None, verified=False)
+        return ""
+
+    if verified and verified_claim:
+        log_epi_verification(candidate, verified_claim, verified=True)
+        return verified_claim.strip()
+
+    log_epi_verification(candidate, None, verified=False)
+    return ""
