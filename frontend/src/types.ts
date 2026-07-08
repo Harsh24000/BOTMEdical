@@ -16,6 +16,7 @@ export interface ReportAnalysis {
   alerts: Alert[];
   findings: Finding[];
   premium_preview: string;
+  starter_suggestions: string[];
   disclaimer: string;
 }
 
