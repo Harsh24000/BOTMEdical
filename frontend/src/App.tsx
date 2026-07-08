@@ -30,36 +30,41 @@ export default function App() {
           </p>
         </main>
       ) : (
-        <main className="workspace">
-          <section className="left">
-            <button className="reset" onClick={() => setResult(null)}>
-              ← Analyze a different report
-            </button>
-            <AnalysisPanel analysis={result.analysis} />
-          </section>
-          <section
-            className="right"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              maxHeight: "calc(100vh - 48px)",
-              overflowY: "auto",
-              gap: "0",
-            }}
-          >
-            <div style={{ height: "520px", flexShrink: 0 }}>
+        <>
+          {/*
+            NOTE ON LAYOUT: PremiumHook used to live inside the sticky "right"
+            sidebar alongside Chat. That caused repeated clipping issues —
+            .right is position:sticky with a CSS-defined height on .chat
+            (calc(100vh - 120px)), so anything stacked below Chat inside that
+            same sidebar was fighting an unpredictable, viewport-dependent
+            height. Moving it to a full-width section BELOW the two-column
+            grid removes that entire class of bug: it's now just normal
+            page content, reachable by ordinary page scroll, with nothing
+            constraining or clipping it.
+          */}
+          <main className="workspace">
+            <section className="left">
+              <button className="reset" onClick={() => setResult(null)}>
+                ← Analyze a different report
+              </button>
+              <AnalysisPanel analysis={result.analysis} />
+            </section>
+            <section className="right">
               <Chat
                 sessionId={result.session_id}
                 starterSuggestions={result.analysis.starter_suggestions}
                 onUpgrade={handleUpgradeClick}
               />
-            </div>
+            </section>
+          </main>
+
+          <div style={{ maxWidth: "1200px", margin: "20px auto 0" }}>
             <PremiumHook
               previewLines={result.analysis.premium_preview}
               onUpgrade={handleUpgradeClick}
             />
-          </section>
-        </main>
+          </div>
+        </>
       )}
     </div>
   );
