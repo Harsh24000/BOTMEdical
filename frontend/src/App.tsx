@@ -39,7 +39,10 @@ export default function App() {
           </section>
           <section className="right" style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ flex: 1, minHeight: 0 }}>
-              <Chat sessionId={result.session_id} />
+              <Chat
+                sessionId={result.session_id}
+                starterSuggestions={result.analysis.starter_suggestions}
+              />
             </div>
             <PremiumHook
               previewText={result.analysis.premium_preview}
