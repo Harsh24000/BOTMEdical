@@ -66,6 +66,28 @@ def strip_alert_numbers(alerts: list[dict]) -> list[dict]:
     return cleaned
 
 
+MAX_PREVIEW_LINE_LENGTH = 80
+
+
+def truncate_preview_lines(lines: list[str]) -> list[str]:
+    """
+    Defense-in-depth for premium_preview: the prompt asks for short, punchy
+    items (~12 words), but nothing structurally stops the model from writing
+    a longer sentence anyway. This truncates at a word boundary so the UI
+    reliably shows short blurred lines instead of wrapped paragraphs,
+    regardless of whether the model followed the length instruction.
+    """
+    cleaned = []
+    for line in lines:
+        line = (line or "").strip()
+        if len(line) <= MAX_PREVIEW_LINE_LENGTH:
+            cleaned.append(line)
+            continue
+        truncated = line[:MAX_PREVIEW_LINE_LENGTH].rsplit(" ", 1)[0].rstrip(".,;: ")
+        cleaned.append(truncated + "…")
+    return cleaned
+
+
 def safe_fallback(alerts: list[dict]) -> str:
     if not alerts:
         return (
