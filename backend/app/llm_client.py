@@ -1,6 +1,7 @@
 """Groq integration: structured report analysis + a research-capable chat."""
 
 import json
+import re
 from collections.abc import Iterator
 
 import groq
@@ -9,10 +10,50 @@ from .config import get_settings
 from .models import ANALYSIS_JSON_SCHEMA
 from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
-from .verifier import verify_and_fix, strip_alert_numbers
+from .verifier import verify_and_fix, strip_alert_numbers, resolve_epi_claim
 
 _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
+
+
+def _verify_epi_claim_via_search(claim: str) -> tuple[bool, str | None]:
+    """
+    Fact-checks ONE epidemiological/demographic claim using groq/compound,
+    which has live web search built in (same model already used for chat).
+    Returns (verified, verified_claim). Fails closed on any parse/API error.
+    """
+    system = (
+        "You are a rigorous medical fact-checker with live web search access. "
+        "Given ONE epidemiological or demographic health claim, search for current, "
+        "reputable sources (WHO, ICMR, peer-reviewed journals, national health "
+        "ministries, major public health bodies) to check whether it is accurate "
+        "as stated.\n\n"
+        "Respond with ONLY a JSON object, no other text: "
+        '{"verified": true or false, "verified_claim": "a precise, source-backed '
+        'rephrasing under 25 words, or an empty string if not verified"}. '
+        "If you cannot find a clear, credible, CURRENT source that confirms the "
+        "claim, set verified to false and verified_claim to an empty string. "
+        "Do not guess, approximate, or verify based on general impressions — "
+        "only confirm what your search actually surfaces."
+    )
+    try:
+        response = _client.chat.completions.create(
+            model=_settings.chat_model,  # groq/compound — built-in web search
+            temperature=0.0,
+            max_tokens=300,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": claim},
+            ],
+        )
+        raw = response.choices[0].message.content or ""
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        payload = json.loads(match.group(0)) if match else json.loads(raw)
+        verified = bool(payload.get("verified"))
+        verified_claim = payload.get("verified_claim") or None
+        return verified, verified_claim
+    except Exception:
+        return False, None
 
 
 def _call_groq_analysis(report_text: str, location_context: str, extra_instruction: str = "") -> dict:
@@ -43,9 +84,11 @@ def _call_groq_analysis(report_text: str, location_context: str, extra_instructi
 
 
 def analyze_report(report_text: str, location: str | None = None) -> dict:
-    """Run a one-shot structured analysis, then apply both guardrails:
-    1. cohort_risk fabrication check (existing)
-    2. alert description number-stripping (new)
+    """Run a one-shot structured analysis, then apply all three guardrails:
+    1. cohort_risk_base fabrication check
+    2. alert description number-stripping
+    3. epi_claim_candidate verification against live sources — only shown
+       if confirmed, silently omitted otherwise
     """
     location_context = ""
     if location:
@@ -59,9 +102,9 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     def _retry(flagged_numbers: list[str]) -> dict:
         correction_note = (
             "\n\nIMPORTANT CORRECTION: Your previous response included the "
-            f"statistic(s) {flagged_numbers} in cohort_risk. These numbers do "
-            "not appear anywhere in the source report and are fabricated. "
-            "Regenerate cohort_risk WITHOUT inventing any percentage, "
+            f"statistic(s) {flagged_numbers} in cohort_risk_base. These numbers "
+            "do not appear anywhere in the source report and are fabricated. "
+            "Regenerate cohort_risk_base WITHOUT inventing any percentage, "
             "multiplier (e.g. '2x'), or population-comparison number. You may "
             "only reference numbers that are explicitly present in the report "
             "text, or use qualitative urgency language with no invented stats."
@@ -70,6 +113,13 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
 
     result = verify_and_fix(result, report_text, _retry)
     result["alerts"] = strip_alert_numbers(result.get("alerts", []))
+
+    verified_addendum = resolve_epi_claim(
+        result.get("epi_claim_candidate", ""), _verify_epi_claim_via_search
+    )
+    base = (result.get("cohort_risk_base", "") or "").strip()
+    result["cohort_risk"] = f"{base} {verified_addendum}".strip() if verified_addendum else base
+
     return result
 
 
