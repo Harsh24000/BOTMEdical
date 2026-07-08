@@ -1,16 +1,12 @@
 """
-Guardrail layer that catches fabricated statistics in the AI-generated
-cohort_risk field before they reach the user.
+Guardrail layer with two jobs:
 
-Design: the pipeline has no real epidemiological database. The ONLY numbers
-that are legitimately verifiable are ones that already appear in the
-source report text (patient's own values / reference ranges). Any
-percentage, multiplier ("2.3x"), or population-comparison number in
-cohort_risk that does NOT trace back to the report text is, by
-construction, invented by the model — not looked up, not calculated.
-
-This module is deliberately dumb and deterministic where possible.
-A regex check can't hallucinate. An LLM judging an LLM can.
+1. (existing) Catch fabricated statistics in cohort_risk — numbers that
+   don't trace back to the source report text.
+2. (new) Defense-in-depth: strip any stray numeric value that leaks into
+   alert descriptions, even though the prompt already instructs the model
+   not to include them. Prompts get ignored sometimes; this makes the
+   "no numbers in alerts" rule structurally enforced, not just requested.
 """
 
 import logging
@@ -23,20 +19,20 @@ logger = logging.getLogger("fabrication_guard")
 # Matches things like: "230%", "2.4x", "340 %", "1.8 x faster"
 NUMERIC_CLAIM = re.compile(r"\d+(?:\.\d+)?\s*(?:%|x\b)", re.IGNORECASE)
 
-# Where flagged incidents get logged for your own review.
+# Matches a value + common lab unit anywhere in a sentence, e.g. "489.3 mg/dL",
+# "8.1 mg/dL", "110 U/L". Used to redact numbers from alert descriptions.
+LAB_VALUE_PATTERN = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:mg/dL|g/dL|U/L|mmol/L|ng/mL|mIU/L|IU/L|/uL|/µL|%|mg|g|units?)",
+    re.IGNORECASE,
+)
+# Bare numbers left over (e.g. "489.3" with no unit attached)
+BARE_NUMBER = re.compile(r"\b\d+(?:\.\d+)?\b")
+
 INCIDENT_LOG_PATH = Path(__file__).parent / "fabrication_incidents.log"
 
 
 def find_unverified_numbers(claim_text: str, report_text: str) -> list[str]:
-    """
-    Return every numeric claim in claim_text (e.g. "230%", "2.4x") that does
-    NOT appear as a raw digit sequence anywhere in report_text.
-
-    This is intentionally strict and literal — it does not try to be smart
-    about units or context. A false positive (flagging a real number that
-    happens to be phrased differently) is far cheaper than a false negative
-    (letting a fabricated stat through).
-    """
+    """Return numeric claims in claim_text (e.g. "230%") not present in report_text."""
     found = NUMERIC_CLAIM.findall(claim_text)
     unverified = []
     for raw_match in found:
@@ -46,12 +42,28 @@ def find_unverified_numbers(claim_text: str, report_text: str) -> list[str]:
     return unverified
 
 
+def strip_alert_numbers(alerts: list[dict]) -> list[dict]:
+    """
+    Remove any numeric value from alert descriptions. This runs regardless
+    of whether the model followed instructions, so a stray "489.3 mg/dL"
+    can never reach the UI.
+    """
+    cleaned = []
+    for alert in alerts:
+        desc = alert.get("description", "")
+        original = desc
+        desc = LAB_VALUE_PATTERN.sub("", desc)
+        desc = BARE_NUMBER.sub("", desc)
+        # collapse any double spaces / stray punctuation left behind
+        desc = re.sub(r"\s{2,}", " ", desc).strip()
+        desc = re.sub(r"\s+([.,])", r"\1", desc)
+        if desc != original:
+            logger.info("Redacted number(s) from alert description: %r -> %r", original, desc)
+        cleaned.append({**alert, "description": desc})
+    return cleaned
+
+
 def safe_fallback(alerts: list[dict]) -> str:
-    """
-    Deterministic, LLM-free fallback used when the model fabricates a stat
-    twice in a row. No invented numbers, ever — just references data that's
-    already been extracted and verified elsewhere in the pipeline.
-    """
     if not alerts:
         return (
             "Your report includes results outside the typical reference "
@@ -66,7 +78,6 @@ def safe_fallback(alerts: list[dict]) -> str:
 
 
 def log_fabrication_incident(report_text: str, claim_text: str, flagged: list[str]) -> None:
-    """Append a record of a caught fabrication so you can audit frequency over time."""
     entry = (
         f"{datetime.now(timezone.utc).isoformat()} | "
         f"flagged={flagged} | "
@@ -77,29 +88,18 @@ def log_fabrication_incident(report_text: str, claim_text: str, flagged: list[st
         with open(INCIDENT_LOG_PATH, "a") as f:
             f.write(entry)
     except OSError:
-        # Never let logging failures break the actual request.
         logger.warning("Could not write fabrication incident log", exc_info=True)
     logger.warning("Fabrication caught and corrected: %s", flagged)
 
 
 def verify_and_fix(result: dict, report_text: str, retry_fn) -> dict:
-    """
-    Main entry point. Wraps a raw analysis result with the 3-layer guardrail:
-
-    1. Regex check against source text.
-    2. One retry with a stricter prompt naming the exact violation
-       (retry_fn is a callback you provide — see llm_client.py wiring).
-    3. Deterministic fallback if the retry still fabricates.
-
-    Returns the (possibly corrected) result dict. Never raises on its own.
-    """
+    """Main entry point for the cohort_risk fabrication guard (unchanged behavior)."""
     claim = result.get("cohort_risk", "")
     unverified = find_unverified_numbers(claim, report_text)
 
     if not unverified:
-        return result  # clean on first try, nothing to do
+        return result
 
-    # Layer 2: one retry, telling the model exactly what it fabricated.
     try:
         retried = retry_fn(unverified)
     except Exception:
@@ -110,12 +110,10 @@ def verify_and_fix(result: dict, report_text: str, retry_fn) -> dict:
         retried_claim = retried.get("cohort_risk", "")
         still_unverified = find_unverified_numbers(retried_claim, report_text)
         if not still_unverified:
-            return retried  # retry succeeded, ship it
-        # retry also fabricated -> fall through to Layer 3
+            return retried
         result = retried
         unverified = still_unverified
 
-    # Layer 3: deterministic fallback, no LLM numbers at all.
     log_fabrication_incident(report_text, claim, unverified)
     result["cohort_risk"] = safe_fallback(result.get("alerts", []))
     return result
