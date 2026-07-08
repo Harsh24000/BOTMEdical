@@ -3,7 +3,21 @@ interface Props {
   onUpgrade: () => void;
 }
 
+const FEATURES = [
+  { icon: "🥗", label: "Diet Plan" },
+  { icon: "✅", label: "Step-by-Step Actions" },
+  { icon: "🧑‍⚕️", label: "Coach Mode" },
+];
+
 export default function PremiumHook({ previewText, onUpgrade }: Props) {
+  // premium_preview is 4-5 newline-separated coach lines from the backend.
+  // Splitting them out lets each render as its own blurred row, so it reads
+  // as a real multi-item plan rather than a blurred paragraph.
+  const lines = previewText
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+
   return (
     <div
       style={{
@@ -17,27 +31,58 @@ export default function PremiumHook({ previewText, onUpgrade }: Props) {
         boxShadow: "0 10px 25px -5px rgba(0,0,0,0.05)",
       }}
     >
-      <h3 style={{ margin: "0 0 0.25rem 0", color: "#111827", fontSize: "1.15rem", fontWeight: 800 }}>
+      <h3 style={{ margin: "0 0 0.6rem 0", color: "#111827", fontSize: "1.15rem", fontWeight: 800 }}>
         Your Personalized Health Plan
       </h3>
-      <p style={{ margin: "0 0 1rem 0", color: "#64748b", fontSize: "0.9rem" }}>
-        Diet plan, step-by-step actions, and coach mode — built from your actual results.
+
+      {/* Bold, noticeable feature row instead of a plain sentence */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.1rem" }}>
+        {FEATURES.map((f) => (
+          <span
+            key={f.label}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              background: "#eff6ff",
+              color: "#1d4ed8",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              padding: "0.35rem 0.7rem",
+              borderRadius: "999px",
+              border: "1px solid #bfdbfe",
+            }}
+          >
+            <span>{f.icon}</span>
+            {f.label}
+          </span>
+        ))}
+      </div>
+      <p style={{ margin: "0 0 1rem 0", color: "#334155", fontSize: "0.95rem", fontWeight: 600 }}>
+        Built from your actual results — not generic advice.
       </p>
 
       {/* Real AI-generated content, blurred to demonstrate genuine value without giving it away */}
       <div style={{ position: "relative" }}>
-        <p
-          style={{
-            filter: "blur(6px)",
-            userSelect: "none",
-            color: "#334155",
-            fontSize: "1rem",
-            lineHeight: 1.6,
-            margin: 0,
-          }}
-        >
-          {previewText}
-        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: "0.5rem",
+                filter: "blur(6px)",
+                userSelect: "none",
+              }}
+            >
+              <span style={{ color: "#16a34a", fontWeight: 700, flexShrink: 0 }}>✓</span>
+              <p style={{ margin: 0, color: "#334155", fontSize: "0.95rem", lineHeight: 1.5 }}>
+                {line}
+              </p>
+            </div>
+          ))}
+        </div>
 
         <div
           style={{
@@ -48,7 +93,7 @@ export default function PremiumHook({ previewText, onUpgrade }: Props) {
             alignItems: "center",
             justifyContent: "center",
             gap: "0.75rem",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.85) 60%)",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.9) 55%)",
           }}
         >
           <div style={{ fontSize: "1.75rem" }}>🔒</div>
