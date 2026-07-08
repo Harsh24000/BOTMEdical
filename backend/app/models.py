@@ -105,15 +105,16 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "premium_preview": {
             "type": "array",
             "description": (
-                "EXACTLY 4 to 5 items, each ONE short, actionable, somewhat non-obvious coaching tip "
-                "written in a direct, personal coach voice. The patient already knows their diagnosis "
-                "from the alerts above \u2014 do NOT restate the problem (e.g. 'your triglycerides are "
-                "high'). Each item must be the SOLUTION they don't already know: a specific food swap, "
-                "habit, or lifestyle change tied to one of their actual abnormal findings. No invented "
-                "efficacy stats or percentages. This is shown blurred in the UI as an upgrade hook, one "
-                "item per line, so it must read as real, non-obvious value worth paying for."
+                "EXACTLY 4 to 5 items, each ONE short, punchy, non-obvious coaching tip under 12 words "
+                "(roughly 60-70 characters) \u2014 a single action, not a sentence with an explanation "
+                "clause attached. The patient already knows their diagnosis from the alerts above \u2014 "
+                "do NOT restate the problem or explain the mechanism. Each item must be the SOLUTION "
+                "they don't already know: a specific food swap, habit, or lifestyle change tied to one "
+                "of their actual abnormal findings. No invented efficacy stats or percentages. This is "
+                "shown blurred in the UI as an upgrade hook, one short item per line \u2014 4-5 lines "
+                "total, not 4-5 paragraphs."
             ),
-            "items": {"type": "string"},
+            "items": {"type": "string", "maxLength": 80},
             "minItems": 4,
             "maxItems": 5,
         },
