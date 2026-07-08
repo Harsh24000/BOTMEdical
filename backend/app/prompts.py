@@ -47,6 +47,14 @@ within weeks..."). This must be real, useful content tied to their actual
 results — not a vague generic teaser. It will be shown blurred in the UI to
 demonstrate real value before the user unlocks it.
 
+5. `starter_suggestions`: Write 2 to 4 short, specific questions from the
+PATIENT'S perspective (things they'd want to ask a doctor about THEIR
+results) — e.g. "Why is my ALT elevated?" or "What does high triglycerides
+mean for my heart?". Base these only on the abnormal findings you actually
+identified. These appear as tappable suggestion chips before the patient has
+typed anything, so they must be concrete and answerable from this report —
+not generic wellness questions.
+
 Principles:
 - Every severity classification must be justified by the reference range in
   the report text — never estimate or invent a range.
