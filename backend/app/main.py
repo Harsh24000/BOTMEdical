@@ -23,6 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+
+# Free chat exchanges allowed before the paywall gate kicks in.
+FREE_CHAT_LIMIT = 1
+
 
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_report(
@@ -56,9 +61,6 @@ async def upload_report(
     return UploadResponse(session_id=session_id, analysis=analysis)
 
 
-MAX_UPLOAD_BYTES = 15 * 1024 * 1024
-
-
 @app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest):
     if not settings.groq_api_key:
@@ -67,6 +69,12 @@ async def chat_endpoint(req: ChatRequest):
     session = get_session(req.session_id)
     if not session:
         raise HTTPException(404, "Session not found or expired.")
+
+    if session.chat_count >= FREE_CHAT_LIMIT:
+        # 402 Payment Required — no payment provider wired in yet, this is
+        # the gate stub. Frontend catches this status and shows the
+        # upgrade CTA instead of the chat input.
+        raise HTTPException(402, "Free question limit reached. Upgrade to keep chatting with Dr. Gyan.")
 
     # stream_chat yields string chunks directly
     return StreamingResponse(
