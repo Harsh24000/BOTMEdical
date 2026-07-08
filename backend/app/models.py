@@ -30,6 +30,7 @@ class ReportAnalysis(BaseModel):
     alerts: list[Alert]
     findings: list[Finding]
     premium_preview: str
+    starter_suggestions: list[str]
     disclaimer: str
 
 
@@ -94,6 +95,16 @@ ANALYSIS_JSON_SCHEMA: dict = {
                 "so it must be real, substantive content — not a generic teaser sentence."
             ),
         },
+        "starter_suggestions": {
+            "type": "array",
+            "description": (
+                "2 to 4 short, specific questions written from the PATIENT'S perspective, based on "
+                "their actual abnormal findings (e.g. 'Why is my ALT elevated?'). Shown as tappable "
+                "suggestion chips before the user has asked anything, so each must be answerable using "
+                "only the findings already identified in this report."
+            ),
+            "items": {"type": "string"},
+        },
         "disclaimer": {"type": "string"},
     },
     "required": [
@@ -101,6 +112,7 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "alerts",
         "findings",
         "premium_preview",
+        "starter_suggestions",
         "disclaimer",
     ],
     "additionalProperties": False,
