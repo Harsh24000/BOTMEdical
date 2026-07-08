@@ -29,7 +29,7 @@ class ReportAnalysis(BaseModel):
     cohort_risk: str
     alerts: list[Alert]
     findings: list[Finding]
-    premium_preview: str
+    premium_preview: list[str]
     starter_suggestions: list[str]
     disclaimer: str
 
@@ -103,15 +103,19 @@ ANALYSIS_JSON_SCHEMA: dict = {
             },
         },
         "premium_preview": {
-            "type": "string",
+            "type": "array",
             "description": (
-                "4 to 5 short lines, each a single actionable coaching tip written in a direct, "
-                "personal coach voice (e.g. 'Cut refined sugar to under 25g/day \u2014 this directly "
-                "targets your elevated triglycerides.'). EVERY line must be grounded in one of this "
-                "patient's actual abnormal findings \u2014 no generic advice, no invented efficacy stats "
-                "or percentages. Join the lines with \\n (one tip per line). This is shown blurred in "
-                "the UI as an upgrade hook, so it must read as a real, specific plan, not a vague teaser."
+                "EXACTLY 4 to 5 items, each ONE short, actionable, somewhat non-obvious coaching tip "
+                "written in a direct, personal coach voice. The patient already knows their diagnosis "
+                "from the alerts above \u2014 do NOT restate the problem (e.g. 'your triglycerides are "
+                "high'). Each item must be the SOLUTION they don't already know: a specific food swap, "
+                "habit, or lifestyle change tied to one of their actual abnormal findings. No invented "
+                "efficacy stats or percentages. This is shown blurred in the UI as an upgrade hook, one "
+                "item per line, so it must read as real, non-obvious value worth paying for."
             ),
+            "items": {"type": "string"},
+            "minItems": 4,
+            "maxItems": 5,
         },
         "starter_suggestions": {
             "type": "array",
