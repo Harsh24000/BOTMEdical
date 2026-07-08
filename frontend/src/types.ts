@@ -15,7 +15,7 @@ export interface ReportAnalysis {
   cohort_risk: string;
   alerts: Alert[];
   findings: Finding[];
-  premium_preview: string;
+  premium_preview: string[];
   starter_suggestions: string[];
   disclaimer: string;
 }
