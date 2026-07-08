@@ -37,8 +37,17 @@ export default function App() {
             </button>
             <AnalysisPanel analysis={result.analysis} />
           </section>
-          <section className="right" style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ flex: 1, minHeight: 0 }}>
+          <section
+            className="right"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              maxHeight: "calc(100vh - 48px)",
+              overflowY: "auto",
+              gap: "0",
+            }}
+          >
+            <div style={{ height: "520px", flexShrink: 0 }}>
               <Chat
                 sessionId={result.session_id}
                 starterSuggestions={result.analysis.starter_suggestions}
