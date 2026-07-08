@@ -12,6 +12,10 @@ class Session:
     # Conversation history in Anthropic message format:
     # [{"role": "user"|"assistant", "content": ...}]
     messages: list[dict] = field(default_factory=list)
+    # Number of completed chat exchanges. Used for the 1-free-question
+    # paywall gate — no payment provider wired in yet, this just enforces
+    # the limit server-side so it can't be bypassed by calling the API directly.
+    chat_count: int = 0
 
 
 _sessions: dict[str, Session] = {}
