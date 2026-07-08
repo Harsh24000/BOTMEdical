@@ -38,9 +38,25 @@ class ReportAnalysis(BaseModel):
 ANALYSIS_JSON_SCHEMA: dict = {
     "type": "object",
     "properties": {
-        "cohort_risk": {
+        "cohort_risk_base": {
             "type": "string",
-            "description": "A cohort-level risk statement based on age, gender, or general population (e.g. '22-25 year old males are more susceptible to...').",
+            "description": (
+                "A specific, urgent risk statement based ONLY on the patient's own findings in this "
+                "report (their actual abnormal values and what they mean). Do NOT include any external "
+                "demographic, national, or population-level claim here — that goes in "
+                "epi_claim_candidate instead."
+            ),
+        },
+        "epi_claim_candidate": {
+            "type": "string",
+            "description": (
+                "OPTIONAL. A single, precise, factually-checkable epidemiological or demographic claim "
+                "you believe is true and relevant (e.g. 'Cardiovascular disease is the leading cause of "
+                "death in India' or 'Type 2 diabetes prevalence is rising among Indian adults under 30'). "
+                "This will be independently verified against live sources before ever being shown to the "
+                "patient — if it cannot be verified, it will be silently discarded, so only propose a claim "
+                "you believe a real source would confirm. Use an empty string if you have no such claim."
+            ),
         },
         "alerts": {
             "type": "array",
@@ -89,10 +105,12 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "premium_preview": {
             "type": "string",
             "description": (
-                "A genuine, specific 2-4 sentence preview of personalized diet/lifestyle coaching "
-                "based on the patient's actual abnormal findings (e.g. concrete dietary or activity "
-                "guidance tied to their real results). This is shown blurred in the UI as an upgrade hook, "
-                "so it must be real, substantive content — not a generic teaser sentence."
+                "4 to 5 short lines, each a single actionable coaching tip written in a direct, "
+                "personal coach voice (e.g. 'Cut refined sugar to under 25g/day \u2014 this directly "
+                "targets your elevated triglycerides.'). EVERY line must be grounded in one of this "
+                "patient's actual abnormal findings \u2014 no generic advice, no invented efficacy stats "
+                "or percentages. Join the lines with \\n (one tip per line). This is shown blurred in "
+                "the UI as an upgrade hook, so it must read as a real, specific plan, not a vague teaser."
             ),
         },
         "starter_suggestions": {
@@ -108,7 +126,8 @@ ANALYSIS_JSON_SCHEMA: dict = {
         "disclaimer": {"type": "string"},
     },
     "required": [
-        "cohort_risk",
+        "cohort_risk_base",
+        "epi_claim_candidate",
         "alerts",
         "findings",
         "premium_preview",
