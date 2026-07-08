@@ -9,14 +9,24 @@ reference range printed in the report itself — never invented.
 
 CRITICAL INSTRUCTIONS:
 
-1. `cohort_risk`: Create a specific, urgent hook based on their demographic
-(age/gender/location) and their ACTUAL abnormal findings. Do NOT invent
-percentages, multipliers, or unverifiable population statistics (e.g. do not
-say "230% higher risk" or "2.4x faster aging" — you have no source for numbers
-like this). Instead, tie the urgency to the real abnormal findings you
-identified. Example: "As a 19-year-old male, your triglyceride level is
-severely elevated well beyond your age group's typical range, placing you at
-early risk for cardiovascular strain that usually appears decades later."
+1. `cohort_risk_base`: A specific, urgent risk statement grounded ONLY in
+this patient's own findings — their actual abnormal values and what they
+mean clinically. Do NOT include any external demographic, national, or
+population-level claim here (no "leading cause of death in India", no
+"rising rates among Indian youth", no pollution/regional claims). Example:
+"As a 19-year-old male, your triglyceride level is severely elevated well
+beyond your age group's typical range, placing you at early risk for
+cardiovascular strain that usually appears decades later."
+
+1b. `epi_claim_candidate`: OPTIONAL. If you know of a specific, genuinely
+well-established epidemiological or demographic fact relevant to this
+patient (e.g. "Cardiovascular disease is the leading cause of death in
+India"), propose it here as ONE precise, checkable sentence. This claim will
+be independently verified against live sources before it is ever shown to
+the patient — if it can't be verified, it is silently dropped. So only
+propose something you believe a real, current source would confirm. If you
+have no such claim, return an empty string. Never invent a statistic,
+percentage, or multiplier here.
 
 2. `alerts`: Identify 1 to 3 of the most alarming ABNORMAL markers.
    - `title`: punchy, names the marker.
@@ -39,13 +49,15 @@ health summary and a chatbot that can answer follow-up questions — it is
 not displayed as raw numbers to the user, so precision matters more than
 tone here.
 
-4. `premium_preview`: Write a genuine, specific 2-4 sentence preview of
-personalized diet/lifestyle coaching, based on the patient's real abnormal
-findings (e.g. "Given your elevated triglycerides and LDL, cutting refined
-sugar and adding a daily post-meal walk would directly target both markers
-within weeks..."). This must be real, useful content tied to their actual
-results — not a vague generic teaser. It will be shown blurred in the UI to
-demonstrate real value before the user unlocks it.
+4. `premium_preview`: Write 4 to 5 short lines, each ONE actionable coaching
+tip in a direct, personal coach voice — as if you're speaking straight to
+this patient. EVERY line must be grounded in one of their actual abnormal
+findings (no generic "eat healthy" advice, no invented efficacy percentages
+or timelines you can't back up). Join the lines with \n, one tip per line.
+Example (for a patient with elevated triglycerides and low hemoglobin):
+"Cut refined sugar and fried food this week \u2014 your triglycerides need it most.\nAdd a 20-minute walk after dinner to blunt post-meal glucose spikes.\nInclude iron-rich foods like spinach and lentils daily to rebuild your hemoglobin.\nSwap one white-rice meal a day for a whole-grain option to ease your lipid load.\nGet your triglycerides and hemoglobin rechecked in 6 weeks to track progress."
+This is shown blurred in the UI as an upgrade hook, so it must read as a
+real, specific plan — not a vague teaser sentence.
 
 5. `starter_suggestions`: Write 2 to 4 short, specific questions from the
 PATIENT'S perspective (things they'd want to ask a doctor about THEIR
