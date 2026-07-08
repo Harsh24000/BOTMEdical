@@ -5,6 +5,7 @@ import type { ChatMessage } from "../types";
 interface Props {
   sessionId: string;
   starterSuggestions: string[];
+  onUpgrade: () => void;
 }
 
 // 5 credits = 1 question. Asking a question consumes the full balance,
@@ -12,7 +13,25 @@ interface Props {
 // relabeled for future monetization (e.g. upgrade grants more credits).
 const TOTAL_CREDITS: number = 5;
 
-export default function Chat({ sessionId, starterSuggestions }: Props) {
+const SUGGESTIONS_MARKER = "|SUGGESTIONS|";
+
+/** Splits Dr. Gyan's raw reply into the answer text and its follow-up
+ * suggestion lines, so the marker never renders as literal text. */
+function parseAssistantMessage(content: string): { text: string; suggestions: string[] } {
+  const idx = content.indexOf(SUGGESTIONS_MARKER);
+  if (idx === -1) {
+    return { text: content, suggestions: [] };
+  }
+  const text = content.slice(0, idx).trim();
+  const suggestions = content
+    .slice(idx + SUGGESTIONS_MARKER.length)
+    .split("\n")
+    .map((s) => s.replace(/^[-*\d.\s]+/, "").trim())
+    .filter(Boolean);
+  return { text, suggestions };
+}
+
+export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -137,24 +156,73 @@ export default function Chat({ sessionId, starterSuggestions }: Props) {
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            style={{
-              alignSelf: m.role === "user" ? "flex-end" : "flex-start",
-              background: m.role === "user" ? "#2563eb" : "#f1f5f9",
-              color: m.role === "user" ? "#ffffff" : "#1e293b",
-              padding: "0.65rem 1rem",
-              borderRadius: "14px",
-              maxWidth: "85%",
-              fontSize: "0.95rem",
-              lineHeight: 1.5,
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {m.content || (loading && i === messages.length - 1 ? "…" : "")}
-          </div>
-        ))}
+        {messages.map((m, i) => {
+          if (m.role === "user") {
+            return (
+              <div
+                key={i}
+                style={{
+                  alignSelf: "flex-end",
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  padding: "0.65rem 1rem",
+                  borderRadius: "14px",
+                  maxWidth: "85%",
+                  fontSize: "0.95rem",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {m.content}
+              </div>
+            );
+          }
+
+          const { text, suggestions } = parseAssistantMessage(m.content);
+          const isStreamingThisMessage = loading && i === messages.length - 1;
+
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: "0.5rem", alignSelf: "flex-start", maxWidth: "85%" }}>
+              <div
+                style={{
+                  background: "#f1f5f9",
+                  color: "#1e293b",
+                  padding: "0.65rem 1rem",
+                  borderRadius: "14px",
+                  fontSize: "0.95rem",
+                  lineHeight: 1.5,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {text || (isStreamingThisMessage ? "…" : "")}
+              </div>
+
+              {suggestions.length > 0 && !isStreamingThisMessage && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  {suggestions.map((s, si) => (
+                    <button
+                      key={si}
+                      onClick={() => (locked ? onUpgrade() : sendMessage(s))}
+                      style={{
+                        textAlign: "left",
+                        background: locked ? "#f8fafc" : "#eff6ff",
+                        border: `1px dashed ${locked ? "#cbd5e1" : "#93c5fd"}`,
+                        borderRadius: "10px",
+                        padding: "0.5rem 0.8rem",
+                        fontSize: "0.85rem",
+                        color: locked ? "#94a3b8" : "#1d4ed8",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {locked ? "🔒 " : ""}
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
         {error && (
           <div style={{ color: "#dc2626", fontSize: "0.85rem", textAlign: "center" }}>{error}</div>
         )}
@@ -211,6 +279,7 @@ export default function Chat({ sessionId, starterSuggestions }: Props) {
             You're out of credits. Upgrade to keep chatting with Dr. Gyan.
           </p>
           <button
+            onClick={onUpgrade}
             style={{
               background: "linear-gradient(135deg, #2563eb, #3b82f6)",
               color: "white",
