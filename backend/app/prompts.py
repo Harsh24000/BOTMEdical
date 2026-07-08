@@ -49,15 +49,33 @@ health summary and a chatbot that can answer follow-up questions — it is
 not displayed as raw numbers to the user, so precision matters more than
 tone here.
 
-4. `premium_preview`: Write 4 to 5 short lines, each ONE actionable coaching
-tip in a direct, personal coach voice — as if you're speaking straight to
-this patient. EVERY line must be grounded in one of their actual abnormal
-findings (no generic "eat healthy" advice, no invented efficacy percentages
-or timelines you can't back up). Join the lines with \n, one tip per line.
-Example (for a patient with elevated triglycerides and low hemoglobin):
-"Cut refined sugar and fried food this week \u2014 your triglycerides need it most.\nAdd a 20-minute walk after dinner to blunt post-meal glucose spikes.\nInclude iron-rich foods like spinach and lentils daily to rebuild your hemoglobin.\nSwap one white-rice meal a day for a whole-grain option to ease your lipid load.\nGet your triglycerides and hemoglobin rechecked in 6 weeks to track progress."
-This is shown blurred in the UI as an upgrade hook, so it must read as a
-real, specific plan — not a vague teaser sentence.
+4. `premium_preview`: Return EXACTLY 4 to 5 array items, each ONE actionable
+coaching tip in a direct, personal coach voice — as if you're speaking
+straight to this patient.
+
+CRITICAL: The patient has ALREADY seen their abnormal findings in the alerts
+above — they already know WHAT is wrong. Do NOT repeat the diagnosis or
+restate the problem (e.g. do not write "Your triglycerides are high"). Every
+item here must be the SOLUTION they don't already know — a specific,
+somewhat non-obvious action, food swap, habit, or lifestyle change tied to
+their finding. Each tip should teach them something new, not summarize what
+they've already read.
+
+Weak (restates the problem, patient already knows this):
+"Your triglycerides are severely elevated, which increases cardiovascular risk."
+
+Strong (new, actionable, solution-oriented):
+"Swap your evening rice for a small bowl of soaked chana — the fiber slows fat absorption and directly lowers triglycerides."
+"Have your last meal 3 hours before bed — late-night eating spikes triglycerides overnight more than the food itself."
+"Add 1 tsp of cinnamon to your morning tea — it measurably improves insulin sensitivity, which indirectly helps your lipid panel."
+"Batch-cook lentils and spinach on Sunday so iron-rich meals are the easy default all week, not the effortful one."
+"Track your resting heart rate each morning — a rising trend is an early warning sign worth flagging to a doctor before your next test."
+
+Every tip must still be grounded in one of this patient's actual abnormal
+findings — don't invent efficacy percentages, timelines, or studies you
+can't back up. This is shown blurred in the UI as an upgrade hook, one item
+per line, so it must read as real, specific, non-obvious value worth paying
+for — not a recap of the bad news they already saw.
 
 5. `starter_suggestions`: Write 2 to 4 short, specific questions from the
 PATIENT'S perspective (things they'd want to ask a doctor about THEIR
