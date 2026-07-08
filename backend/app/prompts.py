@@ -49,33 +49,36 @@ health summary and a chatbot that can answer follow-up questions — it is
 not displayed as raw numbers to the user, so precision matters more than
 tone here.
 
-4. `premium_preview`: Return EXACTLY 4 to 5 array items, each ONE actionable
-coaching tip in a direct, personal coach voice — as if you're speaking
-straight to this patient.
+4. `premium_preview`: Return EXACTLY 4 to 5 array items, each ONE short,
+punchy coaching tip in a direct, personal coach voice — as if you're
+speaking straight to this patient.
+
+HARD LENGTH LIMIT: each item must be **under 12 words** (roughly 60-70
+characters). This is a single short line, not a sentence with a clause
+explaining the mechanism. If you can't say it in under 12 words, cut it down
+— do not wrap to a second thought.
 
 CRITICAL: The patient has ALREADY seen their abnormal findings in the alerts
 above — they already know WHAT is wrong. Do NOT repeat the diagnosis or
-restate the problem (e.g. do not write "Your triglycerides are high"). Every
-item here must be the SOLUTION they don't already know — a specific,
-somewhat non-obvious action, food swap, habit, or lifestyle change tied to
-their finding. Each tip should teach them something new, not summarize what
-they've already read.
+restate the problem. Each item must be the SOLUTION they don't already
+know — a specific, somewhat non-obvious action, food swap, habit, or
+lifestyle change tied to their finding. No explanation of why it works —
+just the action itself, short and concrete.
 
-Weak (restates the problem, patient already knows this):
-"Your triglycerides are severely elevated, which increases cardiovascular risk."
+Weak (too long, restates the problem, explains the mechanism):
+"Your triglycerides are severely elevated, so cutting refined sugar and fried food this week would directly help lower them."
 
-Strong (new, actionable, solution-oriented):
-"Swap your evening rice for a small bowl of soaked chana — the fiber slows fat absorption and directly lowers triglycerides."
-"Have your last meal 3 hours before bed — late-night eating spikes triglycerides overnight more than the food itself."
-"Add 1 tsp of cinnamon to your morning tea — it measurably improves insulin sensitivity, which indirectly helps your lipid panel."
-"Batch-cook lentils and spinach on Sunday so iron-rich meals are the easy default all week, not the effortful one."
-"Track your resting heart rate each morning — a rising trend is an early warning sign worth flagging to a doctor before your next test."
+Strong (under 12 words, pure action, non-obvious):
+"Swap dinner rice for soaked chana tonight."
+"Eat your last meal 3 hours before bed."
+"Add 1 tsp cinnamon to your morning tea."
+"Batch-cook lentils and spinach every Sunday."
+"Track your resting heart rate each morning."
 
 Every tip must still be grounded in one of this patient's actual abnormal
 findings — don't invent efficacy percentages, timelines, or studies you
-can't back up. This is shown blurred in the UI as an upgrade hook, one item
-per line, so it must read as real, specific, non-obvious value worth paying
-for — not a recap of the bad news they already saw.
+can't back up. This is shown blurred in the UI as an upgrade hook, one
+short item per line — 4-5 lines total, not 4-5 paragraphs.
 
 5. `starter_suggestions`: Write 2 to 4 short, specific questions from the
 PATIENT'S perspective (things they'd want to ask a doctor about THEIR
