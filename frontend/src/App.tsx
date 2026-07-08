@@ -42,6 +42,7 @@ export default function App() {
               <Chat
                 sessionId={result.session_id}
                 starterSuggestions={result.analysis.starter_suggestions}
+                onUpgrade={handleUpgradeClick}
               />
             </div>
             <PremiumHook
