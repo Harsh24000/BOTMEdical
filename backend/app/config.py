@@ -10,7 +10,11 @@ class Settings(BaseSettings):
 
     groq_api_key: str = ""
     # Strong general model for the structured analysis (uses Groq JSON mode).
-    analysis_model: str = "llama-3.3-70b-versatile"
+    # NOTE: llama-3.3-70b-versatile was deprecated by Groq (announced June 17,
+    # 2026). openai/gpt-oss-120b is Groq's recommended replacement — it's
+    # free-tier, has strong health-domain reasoning per OpenAI's model docs,
+    # and supports the same JSON mode / structured outputs this app relies on.
+    analysis_model: str = "openai/gpt-oss-120b"
     # groq/compound has built-in web search, enabling real medical research in chat.
     chat_model: str = "groq/compound"
     allowed_origins: str = "http://localhost:5173"
