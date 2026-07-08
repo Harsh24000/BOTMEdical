@@ -57,12 +57,9 @@ export default function PremiumHook({ previewLines, onUpgrade }: Props) {
           </span>
         ))}
       </div>
-      <p style={{ margin: "0 0 1rem 0", color: "#334155", fontSize: "0.95rem", fontWeight: 600 }}>
-        Built from your actual results — not generic advice.
-      </p>
 
       {/* Real AI-generated content, blurred to demonstrate genuine value without giving it away */}
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative", marginTop: "0.25rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
           {lines.map((line, i) => (
             <div
