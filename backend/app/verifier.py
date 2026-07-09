@@ -88,6 +88,43 @@ def truncate_preview_lines(lines: list[str]) -> list[str]:
     return cleaned
 
 
+MAX_FALLBACK_ALERTS = 3
+
+
+def ensure_alerts_not_empty(alerts: list[dict], findings: list[dict]) -> list[dict]:
+    """
+    Defense-in-depth: the alerts schema has no enforced minimum, so the
+    model can legally return an empty array even when findings clearly
+    contains abnormal results (observed in practice — an unusual document
+    type, like an imaging report, can throw off the model's alert
+    generation even though findings extraction still worked correctly).
+
+    If alerts comes back empty but findings has abnormal entries, build
+    fallback alerts directly from the findings' own significance text —
+    no LLM call, no invented severity beyond a safe default of "moderate"
+    (findings don't carry a severity field, so we can't infer mild/severe
+    from them; moderate avoids both under- and over-stating it).
+    """
+    if alerts:
+        return alerts
+
+    abnormal = [f for f in findings if f.get("status") == "abnormal"]
+    if not abnormal:
+        return alerts  # genuinely nothing abnormal — an empty list is correct here
+
+    fallback = []
+    for finding in abnormal[:MAX_FALLBACK_ALERTS]:
+        title = finding.get("test_name", "Abnormal Finding")
+        description = finding.get("significance") or "This result falls outside the normal range."
+        fallback.append({"title": title, "description": description, "severity": "moderate"})
+
+    logger.warning(
+        "Model returned empty alerts despite %d abnormal findings; built %d fallback alert(s)",
+        len(abnormal), len(fallback),
+    )
+    return fallback
+
+
 def safe_fallback(alerts: list[dict]) -> str:
     if not alerts:
         return (
