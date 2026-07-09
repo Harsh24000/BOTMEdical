@@ -39,42 +39,26 @@ def _dpi_for_page(page, max_dimension_px: int) -> float:
     return int(min(MAX_OCR_DPI, dpi))
 
 
-def _render_pages_as_jpeg_b64(data: bytes, max_dimension_px: int) -> list[str]:
-    """Render up to the first 4 pages as base64 JPEGs, each capped to
-    max_dimension_px on the longest side. JPEG instead of PNG cuts payload
-    size significantly for photographic content like scanned reports."""
-    try:
-        import fitz  # PyMuPDF
-    except ImportError:
-        raise PdfExtractionError("PyMuPDF is not installed. OCR cannot run.")
-
-    try:
-        doc = fitz.open(stream=data, filetype="pdf")
-    except Exception as e:
-        raise PdfExtractionError(f"PyMuPDF failed to open PDF: {e}")
-
-    images = []
-    for page_num in range(min(4, len(doc))):
-        page = doc[page_num]
-        dpi = _dpi_for_page(page, max_dimension_px)
-        pix = page.get_pixmap(dpi=dpi)
-        img_bytes = pix.tobytes("jpg", jpg_quality=85)
-        images.append(base64.b64encode(img_bytes).decode("utf-8"))
-    return images
+def _render_page_as_jpeg_b64(page, max_dimension_px: int) -> str:
+    """Render a single page as a base64 JPEG capped to max_dimension_px on
+    the longest side."""
+    dpi = _dpi_for_page(page, max_dimension_px)
+    pix = page.get_pixmap(dpi=dpi)
+    img_bytes = pix.tobytes("jpg", jpg_quality=85)
+    return base64.b64encode(img_bytes).decode("utf-8")
 
 
-def _call_ocr(images: list[str]) -> str:
+def _call_ocr(image_b64: str) -> str:
     content = [
         {
             "type": "text",
             "text": "This is a scanned lab report. Extract all the text, tables, and lab results exactly as they appear. Do not summarize.",
-        }
-    ]
-    for img in images:
-        content.append({
+        },
+        {
             "type": "image_url",
-            "image_url": {"url": f"data:image/jpeg;base64,{img}"},
-        })
+            "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"},
+        },
+    ]
 
     settings = get_settings()
     client = groq.Groq(api_key=settings.groq_api_key or None)
@@ -98,27 +82,79 @@ def _call_ocr(images: list[str]) -> str:
     return response.choices[0].message.content or ""
 
 
-def _ocr_pdf(data: bytes) -> str:
-    """OCR a scanned/image-based PDF via Groq Vision, with a size-based
-    retry: if the first attempt is still too large for Groq's request
-    limit, shrink further and try once more before giving up."""
-    for max_dimension_px in (MAX_OCR_DIMENSION_PX, 1000):
-        images = _render_pages_as_jpeg_b64(data, max_dimension_px)
-        if not images:
-            return ""
+def _ocr_single_page(page, page_num: int) -> str:
+    """
+    OCR one page, with a size-based retry ladder if it's rejected.
+
+    Sends ONE image per API call rather than bundling multiple pages into
+    one request. A prior version bundled up to 4 pages per call; on a real
+    multi-page scan (3 pages, ~576x1280pt each — a perfectly normal size,
+    ~0.5MB combined base64) it still hit a 413 even after the per-image
+    pixel cap fix. The per-image math didn't explain that failure, so
+    rather than guess at another byte-size number, this sends pages
+    one at a time — sidesteps whatever the actual limit was (total images
+    per request, cumulative pixel budget, etc.), not just total bytes.
+    """
+    last_error: Exception | None = None
+    for max_dimension_px in (MAX_OCR_DIMENSION_PX, 1000, 700):
+        image_b64 = _render_page_as_jpeg_b64(page, max_dimension_px)
         try:
-            return _call_ocr(images)
+            return _call_ocr(image_b64)
         except groq.APIStatusError as e:
+            last_error = e
             if e.status_code == 413:
-                continue  # retry with the smaller dimension cap
-            raise PdfExtractionError(f"OCR Vision API failed: {e}")
+                continue  # retry with a smaller dimension cap
+            # Surface the real error instead of a generic message — a 400,
+            # 401, or 429 here needs a different fix than "too large", and
+            # hiding that behind one catch-all message is how the qwen
+            # vision-model migration bug took multiple rounds to diagnose.
+            raise PdfExtractionError(
+                f"OCR failed on page {page_num + 1}: {e.status_code} - {e.body if hasattr(e, 'body') else e}"
+            )
         except Exception as e:
-            raise PdfExtractionError(f"OCR Vision API failed: {e}")
+            last_error = e
+            raise PdfExtractionError(f"OCR failed on page {page_num + 1}: {e}")
 
     raise PdfExtractionError(
-        "This scan is too large for OCR even after compression. "
-        "Try a lower-resolution scan or a smaller crop of the report."
+        f"Page {page_num + 1} is too large for OCR even at the smallest size tried. "
+        f"Last error: {last_error}"
     )
+
+
+def _ocr_pdf(data: bytes) -> str:
+    """OCR a scanned/image-based PDF via Groq Vision, one page at a time
+    (see _ocr_single_page for why). Combines successfully-OCR'd pages;
+    if a page fails, it's skipped with a logged reason rather than failing
+    the whole document, as long as at least one page succeeds."""
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        raise PdfExtractionError("PyMuPDF is not installed. OCR cannot run.")
+
+    try:
+        doc = fitz.open(stream=data, filetype="pdf")
+    except Exception as e:
+        raise PdfExtractionError(f"PyMuPDF failed to open PDF: {e}")
+
+    page_texts: list[str] = []
+    page_errors: list[str] = []
+    num_pages = min(4, len(doc))
+
+    for page_num in range(num_pages):
+        try:
+            text = _ocr_single_page(doc[page_num], page_num)
+            if text.strip():
+                page_texts.append(text.strip())
+        except PdfExtractionError as e:
+            page_errors.append(str(e))
+
+    if not page_texts:
+        # Every page failed — surface the actual reasons, not a generic message.
+        raise PdfExtractionError(
+            "OCR failed on all pages: " + " | ".join(page_errors)
+        )
+
+    return "\n\n".join(page_texts)
 
 
 def extract_text_from_pdf(data: bytes) -> str:
