@@ -10,7 +10,7 @@ from .config import get_settings
 from .models import ANALYSIS_JSON_SCHEMA
 from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
-from .verifier import verify_and_fix, strip_alert_numbers, resolve_epi_claim, truncate_preview_lines
+from .verifier import verify_and_fix, strip_alert_numbers, resolve_epi_claim, truncate_preview_lines, ensure_alerts_not_empty
 from .biological_age import compute_biological_age_estimate
 
 _settings = get_settings()
@@ -113,6 +113,7 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
         return _call_groq_analysis(report_text, location_context, correction_note)
 
     result = verify_and_fix(result, report_text, _retry)
+    result["alerts"] = ensure_alerts_not_empty(result.get("alerts", []), result.get("findings", []))
     result["alerts"] = strip_alert_numbers(result.get("alerts", []))
     result["premium_preview"] = truncate_preview_lines(result.get("premium_preview", []))
 
@@ -122,8 +123,8 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     base = (result.get("cohort_risk_base", "") or "").strip()
     result["cohort_risk"] = f"{base} {verified_addendum}".strip() if verified_addendum else base
 
-    # Fully deterministic — no LLM involved. Returns None (hidden in UI) if
-    # no chronological age or no matched abnormal markers are found.
+    # Fully deterministic — no LLM involved. Never returns None; returns a
+    # dict with status "computed", "needs_markers", or "needs_age".
     result["biological_age"] = compute_biological_age_estimate(
         report_text, result.get("findings", [])
     )
