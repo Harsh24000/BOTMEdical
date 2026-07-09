@@ -12,8 +12,8 @@ export interface Finding {
 }
 
 export interface BiologicalAgeEstimate {
-  status: "computed" | "needs_markers";
-  chronological_age: number;
+  status: "computed" | "needs_markers" | "needs_age";
+  chronological_age: number | null;
   estimated_biological_age: number | null;
   years_added: number | null;
   contributing_markers: string[] | null;
