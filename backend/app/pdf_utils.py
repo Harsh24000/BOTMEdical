@@ -80,12 +80,17 @@ def _call_ocr(images: list[str]) -> str:
     client = groq.Groq(api_key=settings.groq_api_key or None)
 
     response = client.chat.completions.create(
-        # meta-llama/llama-4-scout-17b-16e-instruct was deprecated by Groq
-        # (announced June 17, 2026). openai/gpt-oss-120b is their
-        # recommended replacement — note it must support vision/image_url
-        # content for this OCR path; verify against Groq's current model
-        # list if this call starts failing.
-        model="openai/gpt-oss-120b",
+        # IMPORTANT: this must be a vision-capable model — openai/gpt-oss-120b
+        # is text-only on Groq and will 400 with "content must be a string"
+        # if sent image_url content (learned this the hard way).
+        # meta-llama/llama-4-scout-17b-16e-instruct (previously here) and
+        # meta-llama/llama-4-maverick-17b-128e-instruct have both been
+        # deprecated by Groq. qwen/qwen3.6-27b is the current vision-capable
+        # replacement, but Groq lists it as a PREVIEW model (not guaranteed
+        # stable, can be discontinued at short notice). Check
+        # console.groq.com/docs/vision for the current production-ready
+        # vision model before relying on this long-term.
+        model="qwen/qwen3.6-27b",
         messages=[{"role": "user", "content": content}],
         temperature=0.1,
         max_tokens=4000,
