@@ -11,6 +11,15 @@ export interface Finding {
   significance: string;
 }
 
+export interface BiologicalAgeEstimate {
+  status: "computed" | "needs_markers";
+  chronological_age: number;
+  estimated_biological_age: number | null;
+  years_added: number | null;
+  contributing_markers: string[] | null;
+  suggested_markers: string[] | null;
+}
+
 export interface ReportAnalysis {
   cohort_risk: string;
   alerts: Alert[];
@@ -18,6 +27,7 @@ export interface ReportAnalysis {
   premium_preview: string[];
   starter_suggestions: string[];
   disclaimer: string;
+  biological_age: BiologicalAgeEstimate | null;
 }
 
 export interface UploadResponse {
