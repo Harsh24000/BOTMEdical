@@ -15,12 +15,11 @@ invented statistics, nothing an LLM generated.
 Three possible outcomes, returned as a dict with a `status` field:
 - "computed": age found, at least one relevant marker present -> real estimate.
 - "needs_markers": age found, but the report doesn't test any of the
-  markers this method knows about -> tell the user what to test for next
-  time, instead of just hiding the section.
-- None (the Python value, not a dict): no chronological age could be found
-  in the report at all. Nothing useful to suggest here (we don't know
-  whether age truly isn't on the report, or extraction just missed it),
-  so the section stays hidden, same as before.
+  markers this method knows about -> user can manually enter marker values.
+- "needs_age": no chronological age could be found in the report at all
+  (regardless of whether markers were found) -> user can manually enter
+  their age (and marker values) in the UI instead of the section just
+  disappearing.
 """
 
 import re
@@ -84,10 +83,12 @@ def extract_chronological_age(report_text: str) -> int | None:
     return None
 
 
-def compute_biological_age_estimate(report_text: str, findings: list[dict]) -> dict | None:
+def compute_biological_age_estimate(report_text: str, findings: list[dict]) -> dict:
     """
     Returns:
-    - None if no chronological age could be found at all.
+    - {"status": "needs_age", "suggested_markers": [...]} if no chronological
+      age could be extracted from the report text at all. The UI lets the
+      user type their own age (and marker values) instead of hiding.
     - {"status": "needs_markers", "chronological_age": ..., "suggested_markers": [...]}
       if age is known but none of the report's tests match a known
       aging-associated marker (whether normal or abnormal).
@@ -98,7 +99,7 @@ def compute_biological_age_estimate(report_text: str, findings: list[dict]) -> d
     """
     chronological_age = extract_chronological_age(report_text)
     if chronological_age is None:
-        return None
+        return {"status": "needs_age", "suggested_markers": SUGGESTED_MARKER_LABELS}
 
     matched_any: list[str] = []       # any finding matching a known marker, normal or abnormal
     contributing_markers: list[str] = []  # only the abnormal ones, which add years
