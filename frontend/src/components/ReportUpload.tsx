@@ -17,20 +17,7 @@ export default function ReportUpload({ onAnalyzed }: Props) {
     setFileName(file.name);
     setLoading(true);
     try {
-      let location = "";
-      try {
-        const ipRes = await fetch("https://ipapi.co/json/");
-        if (ipRes.ok) {
-          const ipData = await ipRes.json();
-          if (ipData.city && ipData.country_name) {
-            location = `${ipData.city}, ${ipData.country_name}`;
-          }
-        }
-      } catch (err) {
-        console.warn("Could not fetch location:", err);
-      }
-
-      const result = await uploadReport(file, location);
+      const result = await uploadReport(file);
       onAnalyzed(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
