@@ -73,30 +73,30 @@ export default function BiologicalAgeHook({ estimate }: Props) {
 
     const contributing: string[] = [];
     let totalYears = 0;
-    let filledCount = 0;
+    const missingFields: string[] = [];
 
     for (const marker of MARKER_INPUTS) {
       const raw = values[marker.key];
-      if (raw === undefined || raw.trim() === "") continue;
+      if (raw === undefined || raw.trim() === "") {
+        missingFields.push(marker.label);
+        continue;
+      }
       const num = Number(raw);
-      if (Number.isNaN(num)) continue;
-      filledCount += 1;
+      if (Number.isNaN(num)) {
+        missingFields.push(marker.label);
+        continue;
+      }
       if (marker.isAbnormal(num)) {
         contributing.push(marker.label);
         totalYears += marker.weight;
       }
     }
 
-    // Always require at least one marker value — whether age came from the
-    // report or was just typed in, submitting age alone would only ever
-    // produce the trivial "biological age = your age" result, which isn't
-    // a real calculation worth showing.
-    if (filledCount === 0) {
-      setFormError(
-        needsAgeInput
-          ? "Enter your age and at least one marker value to calculate."
-          : "Enter at least one marker value to calculate."
-      );
+    // Strict: every marker field is required, not just one. Partial data
+    // isn't accepted — this method only produces a result when the full
+    // set of tracked markers has been entered.
+    if (missingFields.length > 0) {
+      setFormError(`Enter a value for all fields to calculate. Missing: ${missingFields.join(", ")}`);
       setManualResult(null);
       return;
     }
@@ -197,8 +197,8 @@ export default function BiologicalAgeHook({ estimate }: Props) {
         </div>
         <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem", color: "#334155" }}>
           {needsAgeInput
-            ? "This report doesn't include your age or the tests needed to estimate your biological age. Enter what you know below to see it now:"
-            : "This report doesn't include the tests needed to estimate your biological age. If you have any of these values from a previous test, enter them below to see it now:"}
+            ? "This report doesn't include your age or the tests needed to estimate your biological age. Enter your age and every value below to see it:"
+            : "This report doesn't include the tests needed to estimate your biological age. Enter every value below (from a recent test) to see it:"}
         </p>
 
         {needsAgeInput && (
