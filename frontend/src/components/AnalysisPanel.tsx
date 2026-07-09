@@ -1,5 +1,6 @@
 import type { ReportAnalysis } from "../types";
 import HealthCard from "./HealthCard";
+import BiologicalAgeHook from "./BiologicalAgeHook";
 
 interface Props {
   analysis: ReportAnalysis;
@@ -18,20 +19,8 @@ export default function AnalysisPanel({ analysis }: Props) {
         Threat Detection Scan
       </h2>
 
-      {/* Cohort Risk Statement */}
-      <div style={{
-        background: "#f8fafc",
-        borderLeft: "4px solid #3b82f6",
-        padding: "1rem 1.5rem",
-        borderRadius: "0 8px 8px 0",
-        marginBottom: "1.5rem",
-        color: "#334155",
-        fontSize: "1.1rem",
-        fontWeight: "500"
-      }}>
-        <strong style={{ color: "#1e293b" }}>Epidemiological Risk Factor: </strong>
-        {analysis.cohort_risk}
-      </div>
+      {/* Free hook section — drives interest before the gated premium content */}
+      <BiologicalAgeHook estimate={analysis.biological_age} />
 
       {/* Health Snapshot — normal vs abnormal counts */}
       <HealthCard findings={analysis.findings} />
@@ -44,14 +33,22 @@ export default function AnalysisPanel({ analysis }: Props) {
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
         {analysis.alerts.map((alert, index) => {
           const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES.moderate;
+          const animationName =
+            alert.severity === "severe"
+              ? "flash-severe"
+              : alert.severity === "moderate"
+              ? "pulse-alert"
+              : "none";
+          const animation =
+            animationName === "none" ? "none" : `${animationName} 1.6s ease-in-out infinite`;
           return (
             <div key={index} style={{
               background: style.bg,
-              border: `1px solid ${style.border}`,
+              border: `2px solid ${style.border}`,
               borderRadius: "12px",
               padding: "1.5rem",
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
-              animation: "pulse-alert 2s infinite",
+              animation,
               position: "relative",
               overflow: "hidden"
             }}>
@@ -81,6 +78,7 @@ export default function AnalysisPanel({ analysis }: Props) {
                   background: style.bar,
                   padding: "0.15rem 0.5rem",
                   borderRadius: "999px",
+                  animation: alert.severity === "severe" ? "badge-flash 1.6s ease-in-out infinite" : "none",
                 }}>
                   {style.label}
                 </span>
@@ -95,9 +93,25 @@ export default function AnalysisPanel({ analysis }: Props) {
 
       <style>{`
         @keyframes pulse-alert {
-          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+          0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.35); }
+          70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+        }
+        @keyframes flash-severe {
+          0%, 100% {
+            border-color: #fca5a5;
+            background-color: #fef2f2;
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+          }
+          50% {
+            border-color: #ef4444;
+            background-color: #fee2e2;
+            box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+          }
+        }
+        @keyframes badge-flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.55; }
         }
       `}</style>
     </div>
