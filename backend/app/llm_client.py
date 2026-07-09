@@ -11,6 +11,7 @@ from .models import ANALYSIS_JSON_SCHEMA
 from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
 from .verifier import verify_and_fix, strip_alert_numbers, resolve_epi_claim, truncate_preview_lines
+from .biological_age import compute_biological_age_estimate
 
 _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
@@ -121,6 +122,12 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     base = (result.get("cohort_risk_base", "") or "").strip()
     result["cohort_risk"] = f"{base} {verified_addendum}".strip() if verified_addendum else base
 
+    # Fully deterministic — no LLM involved. Returns None (hidden in UI) if
+    # no chronological age or no matched abnormal markers are found.
+    result["biological_age"] = compute_biological_age_estimate(
+        report_text, result.get("findings", [])
+    )
+
     return result
 
 
@@ -163,10 +170,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         )
 
         stream = _client.chat.completions.create(
-            # meta-llama/llama-4-scout-17b-16e-instruct was deprecated by
-            # Groq (announced June 17, 2026). openai/gpt-oss-120b is their
-            # recommended replacement.
-            model="openai/gpt-oss-120b",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=messages,
             stream=True,
             max_tokens=450,
