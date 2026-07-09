@@ -87,12 +87,16 @@ export default function BiologicalAgeHook({ estimate }: Props) {
       }
     }
 
-    // When age was already known (needs_markers), at least one marker is
-    // required — submitting nothing would be pointless. When the user just
-    // supplied their own age (needs_age), a valid age alone is enough;
-    // markers are optional and default to zero adjustment.
-    if (!needsAgeInput && filledCount === 0) {
-      setFormError("Enter at least one value to calculate.");
+    // Always require at least one marker value — whether age came from the
+    // report or was just typed in, submitting age alone would only ever
+    // produce the trivial "biological age = your age" result, which isn't
+    // a real calculation worth showing.
+    if (filledCount === 0) {
+      setFormError(
+        needsAgeInput
+          ? "Enter your age and at least one marker value to calculate."
+          : "Enter at least one marker value to calculate."
+      );
       setManualResult(null);
       return;
     }
