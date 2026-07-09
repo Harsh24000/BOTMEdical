@@ -26,13 +26,14 @@ class Finding(BaseModel):
 
 
 class BiologicalAgeEstimate(BaseModel):
-    status: Literal["computed", "needs_markers"]
-    chronological_age: int
+    status: Literal["computed", "needs_markers", "needs_age"]
+    # None only when status == "needs_age" (no age found in the report at all)
+    chronological_age: int | None = None
     # Only populated when status == "computed"
     estimated_biological_age: int | None = None
     years_added: int | None = None
     contributing_markers: list[str] | None = None
-    # Only populated when status == "needs_markers"
+    # Populated for both "needs_markers" and "needs_age"
     suggested_markers: list[str] | None = None
 
 
