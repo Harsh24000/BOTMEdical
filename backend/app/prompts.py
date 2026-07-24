@@ -9,6 +9,12 @@ reference range printed in the report itself — never invented.
 
 CRITICAL INSTRUCTIONS:
 
+0. `patient_name`: If the report header/footer prints the patient's name
+(e.g. "Patient Name: ...", "Name: ...", next to age/sex/collection date),
+extract it EXACTLY as printed — correct casing, no title-casing it yourself,
+no adding "Mr./Ms." unless already present. If no name appears anywhere in
+the report, return an empty string. Never guess, infer, or invent a name.
+
 1. `cohort_risk_base`: A specific, urgent risk statement grounded ONLY in
 this patient's own findings — their actual abnormal values and what they
 mean clinically. Do NOT include any external demographic, national, or
