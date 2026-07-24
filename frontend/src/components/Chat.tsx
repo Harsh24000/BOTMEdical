@@ -109,13 +109,52 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
         overflow: "hidden",
       }}
     >
-      <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid #e2e8f0" }}>
-        <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#111827" }}>
-          🩺 Chat with Dr. Gyan
-        </h3>
-        <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#64748b" }}>
-          {creditsLeft} credit{creditsLeft === 1 ? "" : "s"} left
-        </p>
+      {/* Premium-styled header: dark navy, avatar, online status, credits badge */}
+      <div
+        style={{
+          background: "#0f1a3d",
+          padding: "0.9rem 1.1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+          <div
+            style={{
+              width: "38px",
+              height: "38px",
+              borderRadius: "999px",
+              background: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.15rem",
+              flexShrink: 0,
+            }}
+          >
+            🩺
+          </div>
+          <div>
+            <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.95rem", lineHeight: 1.2 }}>
+              Dr. Gyan AI
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <span style={{ width: "6px", height: "6px", borderRadius: "999px", background: "#34d399" }} />
+              <span style={{ color: "#86efac", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.03em" }}>
+                Online
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ textAlign: "right" }}>
+          <div style={{ color: "#94a3b8", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.05em" }}>
+            CREDITS LEFT
+          </div>
+          <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem" }}>{creditsLeft}</div>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -127,8 +166,8 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
 
         {showSuggestions && (
           <div style={{ marginTop: "1rem" }}>
-            <p style={{ color: "#94a3b8", fontSize: "0.85rem", textAlign: "center", marginBottom: "0.75rem" }}>
-              Based on your report, you might want to ask:
+            <p style={{ color: "#94a3b8", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", marginBottom: "0.6rem" }}>
+              TRY ASKING:
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {starterSuggestions.map((s, i) => (
@@ -138,18 +177,19 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
                   disabled={loading}
                   style={{
                     textAlign: "left",
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
+                    background: "#ffffff",
+                    border: "1px solid #bfdbfe",
                     borderRadius: "10px",
                     padding: "0.6rem 0.9rem",
-                    fontSize: "0.9rem",
-                    color: "#334155",
+                    fontSize: "0.88rem",
+                    color: "#1d4ed8",
+                    fontStyle: "italic",
                     cursor: loading ? "default" : "pointer",
                   }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = "#f1f5f9")}
-                  onMouseOut={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseOver={(e) => (e.currentTarget.style.background = "#eff6ff")}
+                  onMouseOut={(e) => (e.currentTarget.style.background = "#ffffff")}
                 >
-                  {s}
+                  "{s}"
                 </button>
               ))}
             </div>
@@ -229,75 +269,76 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
         <div ref={bottomRef} />
       </div>
 
-      {!locked ? (
-        <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask about your results..."
-            disabled={loading}
-            style={{
-              flex: 1,
-              padding: "0.65rem 0.9rem",
-              borderRadius: "10px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.95rem",
-              outline: "none",
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            style={{
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              padding: "0 1.1rem",
-              fontWeight: 700,
-              cursor: loading ? "default" : "pointer",
-              opacity: loading || !input.trim() ? 0.6 : 1,
-            }}
-          >
-            Send
-          </button>
-        </div>
-      ) : (
+      {/* Refill banner — only shown once credits are used up, sits above the input like the reference */}
+      {locked && (
         <div
           style={{
-            padding: "1.5rem",
-            borderTop: "1px solid #e2e8f0",
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
-            textAlign: "center",
-            gap: "0.75rem",
+            justifyContent: "space-between",
+            background: "#eff6ff",
+            borderTop: "1px solid #dbeafe",
+            padding: "0.65rem 1.1rem",
+            fontSize: "0.85rem",
           }}
         >
-          <p style={{ margin: 0, color: "#475569", fontSize: "0.95rem" }}>
-            You're out of credits. Upgrade to keep chatting with Dr. Gyan.
-          </p>
+          <span style={{ color: "#334155" }}>Run out of credits?</span>
           <button
             onClick={onUpgrade}
             style={{
-              background: "linear-gradient(135deg, #2563eb, #3b82f6)",
-              color: "white",
-              padding: "12px 28px",
+              background: "none",
               border: "none",
-              borderRadius: "8px",
-              fontSize: "1rem",
-              fontWeight: "bold",
+              color: "#1d4ed8",
+              fontWeight: 700,
+              textDecoration: "underline",
               cursor: "pointer",
-              boxShadow: "0 10px 15px -3px rgba(37, 99, 235, 0.3)",
-              width: "100%",
-              maxWidth: "280px",
+              fontSize: "0.85rem",
+              padding: 0,
             }}
           >
-            Upgrade for ₹99
+            Refill Credits
           </button>
         </div>
       )}
+
+      <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: locked ? "none" : "1px solid #e2e8f0" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={locked ? "Ask Dr. Gyan anything..." : "Ask about your results..."}
+          disabled={loading || locked}
+          style={{
+            flex: 1,
+            padding: "0.65rem 0.9rem",
+            borderRadius: "10px",
+            border: "1px solid #cbd5e1",
+            fontSize: "0.95rem",
+            outline: "none",
+            background: locked ? "#f8fafc" : "#ffffff",
+            color: locked ? "#94a3b8" : "#0f172a",
+          }}
+        />
+        <button
+          onClick={locked ? onUpgrade : handleSend}
+          disabled={locked ? false : loading || !input.trim()}
+          style={{
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            borderRadius: "10px",
+            padding: "0 1.1rem",
+            fontWeight: 700,
+            cursor: "pointer",
+            opacity: locked ? 1 : loading || !input.trim() ? 0.6 : 1,
+          }}
+        >
+          {locked ? "→" : "Send"}
+        </button>
+      </div>
+      <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.68rem", color: "#94a3b8", textAlign: "center" }}>
+        Disclaimer: For informational purposes only.
+      </p>
     </div>
   );
 }
