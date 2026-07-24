@@ -48,12 +48,13 @@ percentage, or multiplier here.
 
 3. `findings`: List EVERY test parameter that appears in the report — not
 just the abnormal ones. For each: `test_name`, the raw `value` as printed
-(with unit), `status` ("normal" or "abnormal") determined by comparing
-against the reference range printed in the report, and a one-sentence
-`significance` note. This field is used internally to power an accurate
-health summary and a chatbot that can answer follow-up questions — it is
-not displayed as raw numbers to the user, so precision matters more than
-tone here.
+(with unit), `reference_range` EXACTLY as printed (e.g. "4.0 - 5.6%", "< 100
+mg/dL") — empty string only if the report genuinely prints no range for that
+test, `status` ("normal" or "abnormal") determined by comparing against that
+range, and a one-sentence `significance` note. This field is used internally
+to power an accurate health summary and a chatbot that can answer follow-up
+questions, AND to render the Biomarker Breakdown table (value + reference
+range ARE shown there, unlike the alerts) — so precision matters here.
 
 4. `premium_preview`: Return EXACTLY 4 to 5 array items, each ONE short,
 punchy coaching tip in a direct, personal coach voice — as if you're
