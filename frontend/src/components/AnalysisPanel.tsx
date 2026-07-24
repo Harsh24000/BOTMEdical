@@ -1,9 +1,11 @@
 import type { ReportAnalysis } from "../types";
 import HealthCard from "./HealthCard";
 import BiologicalAgeHook from "./BiologicalAgeHook";
+import WhyUpgradeCard from "./WhyUpgradeCard";
 
 interface Props {
   analysis: ReportAnalysis;
+  onUpgrade: () => void;
 }
 
 const SEVERITY_STYLES = {
@@ -12,7 +14,7 @@ const SEVERITY_STYLES = {
   severe: { bg: "#fef2f2", border: "#fca5a5", bar: "#ef4444", text: "#b91c1c", label: "Severe" },
 } as const;
 
-export default function AnalysisPanel({ analysis }: Props) {
+export default function AnalysisPanel({ analysis, onUpgrade }: Props) {
   return (
     <div className="analysis" style={{ padding: "0.5rem" }}>
       <h2 style={{ fontSize: "2rem", fontWeight: "800", color: "#111827", marginBottom: "0.5rem", marginTop: 0 }}>
@@ -29,9 +31,17 @@ export default function AnalysisPanel({ analysis }: Props) {
         ⚠️ Critical Alerts Detected
       </h3>
 
-      {/* Alert Boxes */}
+      {/* Alert Boxes — capped to exactly 2, matching the reference design.
+          If the model found more than 2, the 2 shown are the most severe
+          (severe > moderate > mild), not just the first 2 in array order. */}
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "2rem" }}>
-        {analysis.alerts.map((alert, index) => {
+        {[...analysis.alerts]
+          .sort((a, b) => {
+            const rank = { severe: 0, moderate: 1, mild: 2 } as const;
+            return (rank[a.severity] ?? 1) - (rank[b.severity] ?? 1);
+          })
+          .slice(0, 2)
+          .map((alert, index) => {
           const style = SEVERITY_STYLES[alert.severity] ?? SEVERITY_STYLES.moderate;
           const animationName =
             alert.severity === "severe"
@@ -90,6 +100,12 @@ export default function AnalysisPanel({ analysis }: Props) {
           );
         })}
       </div>
+
+      {analysis.alerts.length > 0 && (
+        <div style={{ marginBottom: "2rem" }}>
+          <WhyUpgradeCard onUpgrade={onUpgrade} />
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse-alert {
