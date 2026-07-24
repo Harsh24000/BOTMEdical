@@ -5,6 +5,10 @@ import Chat from "./components/Chat";
 import PremiumHook from "./components/PremiumHook";
 import WhyUpgradeModal from "./components/WhyUpgradeModal";
 import WhyUpgradeCard from "./components/WhyUpgradeCard";
+import SiteHeader from "./components/SiteHeader";
+import HeroHeader from "./components/HeroHeader";
+import TrackProgressCard from "./components/TrackProgressCard";
+import SiteFooter from "./components/SiteFooter";
 import type { UploadResponse } from "./types";
 
 export default function App() {
@@ -21,10 +25,7 @@ export default function App() {
   return (
     <div className="app">
       <WhyUpgradeModal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} />
-      <header>
-        <h1>NirogGyan</h1>
-        <p className="tagline">AI-powered lab report analysis &amp; guidance</p>
-      </header>
+      <SiteHeader patientName={result?.analysis.patient_name} />
 
       {!result ? (
         <main className="centered">
@@ -37,6 +38,18 @@ export default function App() {
       ) : (
         <main className="workspace">
           <section className="left">
+            <div style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "260px" }}>
+                <HeroHeader
+                  patientName={result.analysis.patient_name}
+                  sessionId={result.session_id}
+                  biomarkerCount={result.analysis.findings.length}
+                  wellnessScore={result.analysis.wellness_score}
+                />
+              </div>
+              <TrackProgressCard onUpgrade={handleUpgradeClick} />
+            </div>
+
             <button className="reset" onClick={() => setResult(null)}>
               ← Analyze a different report
             </button>
@@ -60,6 +73,7 @@ export default function App() {
           </section>
         </main>
       )}
+      <SiteFooter />
     </div>
   );
 }
