@@ -8,11 +8,7 @@ interface Props {
   onUpgrade: () => void;
 }
 
-// 5 credits = 1 question. Asking a question consumes the full balance,
-// so this is functionally the same 1-free-question gate as before, just
-// relabeled for future monetization (e.g. upgrade grants more credits).
-const TOTAL_CREDITS: number = 5;
-
+const SESSION_SECONDS = 120;
 const SUGGESTIONS_MARKER = "|SUGGESTIONS|";
 
 /** Splits Dr. Gyan's raw reply into the answer text and its follow-up
@@ -31,19 +27,39 @@ function parseAssistantMessage(content: string): { text: string; suggestions: st
   return { text, suggestions };
 }
 
+function formatTime(totalSeconds: number): string {
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  // Locked by EITHER the free-question limit (server-enforced, via
+  // PaywallError) OR the session clock hitting zero (client-side) —
+  // whichever happens first. Both funnel into the same locked state and
+  // the same upgrade CTA.
   const [locked, setLocked] = useState(false);
+  const [secondsLeft, setSecondsLeft] = useState(SESSION_SECONDS);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const creditsLeft = locked ? 0 : TOTAL_CREDITS;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Real countdown — this is an actual session clock, not a static label.
+  useEffect(() => {
+    if (locked) return;
+    if (secondsLeft <= 0) {
+      setLocked(true);
+      return;
+    }
+    const id = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [secondsLeft, locked]);
 
   async function sendMessage(text: string) {
     const trimmed = text.trim();
@@ -66,7 +82,7 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
           return next;
         });
       });
-      // 1 question = all 5 credits. Same gate as before, just relabeled.
+      // 1 free question total — same server-enforced gate as before.
       setLocked(true);
     } catch (err) {
       if (err instanceof PaywallError) {
@@ -109,7 +125,7 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
         overflow: "hidden",
       }}
     >
-      {/* Premium-styled header: dark navy, avatar, online status, credits badge */}
+      {/* Premium-styled header: dark navy, avatar, online status, session countdown */}
       <div
         style={{
           background: "#0f1a3d",
@@ -151,9 +167,11 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
 
         <div style={{ textAlign: "right" }}>
           <div style={{ color: "#94a3b8", fontSize: "0.62rem", fontWeight: 700, letterSpacing: "0.05em" }}>
-            CREDITS LEFT
+            SESSION LEFT
           </div>
-          <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem" }}>{creditsLeft}</div>
+          <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.9rem" }}>
+            {locked ? "0:00" : formatTime(secondsLeft)}
+          </div>
         </div>
       </div>
 
@@ -269,39 +287,38 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
         <div ref={bottomRef} />
       </div>
 
-      {/* Refill banner — only shown once credits are used up, sits above the input like the reference */}
-      {locked && (
-        <div
+      {/* Refill banner — always visible above the input, matching the
+          reference (it shows even before the session/credits run out). */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          background: "#eff6ff",
+          borderTop: "1px solid #dbeafe",
+          padding: "0.65rem 1.1rem",
+          fontSize: "0.85rem",
+        }}
+      >
+        <span style={{ color: "#334155" }}>Run out of time?</span>
+        <button
+          onClick={onUpgrade}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "#eff6ff",
-            borderTop: "1px solid #dbeafe",
-            padding: "0.65rem 1.1rem",
+            background: "none",
+            border: "none",
+            color: "#1d4ed8",
+            fontWeight: 700,
+            textDecoration: "underline",
+            cursor: "pointer",
             fontSize: "0.85rem",
+            padding: 0,
           }}
         >
-          <span style={{ color: "#334155" }}>Run out of credits?</span>
-          <button
-            onClick={onUpgrade}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#1d4ed8",
-              fontWeight: 700,
-              textDecoration: "underline",
-              cursor: "pointer",
-              fontSize: "0.85rem",
-              padding: 0,
-            }}
-          >
-            Refill Credits
-          </button>
-        </div>
-      )}
+          Refill Credits
+        </button>
+      </div>
 
-      <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: locked ? "none" : "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", gap: "0.5rem", padding: "0.75rem", borderTop: "1px solid #e2e8f0" }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
