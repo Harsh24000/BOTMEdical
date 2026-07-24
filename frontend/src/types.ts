@@ -7,8 +7,10 @@ export interface Alert {
 export interface Finding {
   test_name: string;
   value: string;
+  reference_range: string;
   status: "normal" | "abnormal";
   significance: string;
+  score: number;
 }
 
 export interface BiologicalAgeEstimate {
