@@ -21,6 +21,7 @@ export interface BiologicalAgeEstimate {
 }
 
 export interface ReportAnalysis {
+  patient_name: string;
   cohort_risk: string;
   alerts: Alert[];
   findings: Finding[];
@@ -28,6 +29,7 @@ export interface ReportAnalysis {
   starter_suggestions: string[];
   disclaimer: string;
   biological_age: BiologicalAgeEstimate | null;
+  wellness_score: number;
 }
 
 export interface UploadResponse {
