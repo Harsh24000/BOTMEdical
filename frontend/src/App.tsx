@@ -3,19 +3,24 @@ import ReportUpload from "./components/ReportUpload";
 import AnalysisPanel from "./components/AnalysisPanel";
 import Chat from "./components/Chat";
 import PremiumHook from "./components/PremiumHook";
+import WhyUpgradeModal from "./components/WhyUpgradeModal";
+import WhyUpgradeCard from "./components/WhyUpgradeCard";
 import type { UploadResponse } from "./types";
 
 export default function App() {
   const [result, setResult] = useState<UploadResponse | null>(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   function handleUpgradeClick() {
-    // Stub — no payment provider wired in yet.
-    // Replace with real checkout flow when Stripe/Razorpay is added.
-    alert("Upgrade flow coming soon!");
+    // Shows the "why upgrade" video hook (WhyUpgradeModal). Its own CTA
+    // still doesn't call a real payment endpoint — no gateway is wired in
+    // yet. Point that button at real checkout when Stripe/Razorpay lands.
+    setUpgradeModalOpen(true);
   }
 
   return (
     <div className="app">
+      <WhyUpgradeModal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} />
       <header>
         <h1>NirogGyan</h1>
         <p className="tagline">AI-powered lab report analysis &amp; guidance</p>
@@ -35,7 +40,7 @@ export default function App() {
             <button className="reset" onClick={() => setResult(null)}>
               ← Analyze a different report
             </button>
-            <AnalysisPanel analysis={result.analysis} />
+            <AnalysisPanel analysis={result.analysis} onUpgrade={handleUpgradeClick} />
           </section>
           <section className="right">
             <Chat
@@ -43,6 +48,9 @@ export default function App() {
               starterSuggestions={result.analysis.starter_suggestions}
               onUpgrade={handleUpgradeClick}
             />
+            <div style={{ marginTop: "1.5rem" }}>
+              <WhyUpgradeCard onUpgrade={handleUpgradeClick} />
+            </div>
             <div style={{ marginTop: "1.5rem" }}>
               <PremiumHook
                 previewLines={result.analysis.premium_preview}
