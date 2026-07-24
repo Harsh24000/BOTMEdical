@@ -12,6 +12,7 @@ from .prompts import ANALYSIS_SYSTEM, build_chat_system
 from .store import Session
 from .verifier import verify_and_fix, strip_alert_numbers, resolve_epi_claim, truncate_preview_lines, ensure_alerts_not_empty
 from .biological_age import compute_biological_age_estimate
+from .finding_score import compute_finding_score
 
 _settings = get_settings()
 _client = groq.Groq(api_key=_settings.groq_api_key or None)
@@ -128,6 +129,14 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     result["biological_age"] = compute_biological_age_estimate(
         report_text, result.get("findings", [])
     )
+
+    # Also fully deterministic (see finding_score.py) — the Biomarker
+    # Breakdown table's per-row gauge, computed from the report's own
+    # printed value + reference_range, never asked of the LLM.
+    for finding in result.get("findings", []):
+        finding["score"] = compute_finding_score(
+            finding.get("value", ""), finding.get("reference_range", "")
+        )
 
     # Also fully deterministic: simple normal-findings ratio, 0-100. Same
     # reasoning as biological_age above — a "wellness score" is exactly the
