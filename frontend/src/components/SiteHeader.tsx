@@ -1,3 +1,6 @@
+import { toDisplayName } from "../utils/formatName";
+import LogoMark from "./LogoMark";
+
 interface Props {
   patientName?: string;
 }
@@ -44,7 +47,10 @@ export default function SiteHeader({ patientName }: Props) {
         background: "#ffffff",
       }}
     >
-      <div style={{ fontWeight: 800, fontSize: "1.25rem", color: "#111827" }}>NirogGyan</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 800, fontSize: "1.25rem", color: "#111827" }}>
+        <LogoMark />
+        Niro Health
+      </div>
 
       <nav style={{ display: "flex", alignItems: "center", gap: "1.75rem" }}>
         {/* Placeholder links — point these at real sections/pages before launch */}
@@ -72,9 +78,9 @@ export default function SiteHeader({ patientName }: Props) {
         {patientName && (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <span style={{ color: "#334155", fontSize: "0.9rem", fontWeight: 600 }}>
-              {patientName.split(/\s+/)[0]}
+              {toDisplayName(patientName).split(/\s+/)[0]}
             </span>
-            <InitialsAvatar name={patientName} />
+            <InitialsAvatar name={toDisplayName(patientName)} />
           </div>
         )}
       </nav>
