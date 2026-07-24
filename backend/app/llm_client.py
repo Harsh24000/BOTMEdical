@@ -171,7 +171,7 @@ def stream_chat(session: Session, user_message: str) -> Iterator[str]:
         )
 
         stream = _client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model=_settings.chat_model,
             messages=messages,
             stream=True,
             max_tokens=450,
