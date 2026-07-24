@@ -129,6 +129,17 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
         report_text, result.get("findings", [])
     )
 
+    # Also fully deterministic: simple normal-findings ratio, 0-100. Same
+    # reasoning as biological_age above — a "wellness score" is exactly the
+    # kind of number that's easy for an LLM to fabricate, so it's computed
+    # here from the findings list instead of asked for in the JSON schema.
+    findings = result.get("findings", [])
+    if findings:
+        normal_count = sum(1 for f in findings if f.get("status") == "normal")
+        result["wellness_score"] = round(100 * normal_count / len(findings))
+    else:
+        result["wellness_score"] = 0
+
     return result
 
 
