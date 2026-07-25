@@ -88,8 +88,7 @@ header h1 {
   }
 }
 
-.left,
-.right {
+.left {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -98,6 +97,7 @@ header h1 {
 .right {
   position: sticky;
   top: 24px;
+  height: calc(100vh - 120px);
 }
 
 .reset {
