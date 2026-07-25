@@ -69,7 +69,12 @@ def _call_groq_analysis(report_text: str, location_context: str, extra_instructi
     response = _client.chat.completions.create(
         model=_settings.analysis_model,
         temperature=0.2,
-        max_tokens=4000,
+        # Was 4000. Findings now also carry reference_range per item, which
+        # pushed reports with many tests close enough to the old ceiling
+        # that the model would finish `findings`/`premium_preview`, close
+        # the JSON object, and never reach the schema's last fields
+        # (starter_suggestions, disclaimer) — valid JSON, just incomplete.
+        max_tokens=7000,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system},
@@ -132,6 +137,24 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
         for key in ("test_name", "value", "reference_range", "significance"):
             if finding.get(key) is None:
                 finding[key] = ""
+
+    # Same reasoning, one level up: json_object mode guarantees valid JSON
+    # syntax, NOT that every schema field is present. If the model runs out
+    # of room (or otherwise stops early) and never reaches these later
+    # fields, backfill safe empty defaults rather than letting a hard
+    # required-field validation error 500 the whole upload. Degraded
+    # output (e.g. no starter_suggestions) beats no output at all.
+    result.setdefault("cohort_risk_base", "")
+    result.setdefault("epi_claim_candidate", "")
+    result.setdefault("alerts", [])
+    result.setdefault("findings", [])
+    result.setdefault("premium_preview", [])
+    result.setdefault("starter_suggestions", [])
+    result.setdefault(
+        "disclaimer",
+        "Educational use only. This tool does not provide a medical diagnosis "
+        "and is not a substitute for advice from a qualified healthcare professional.",
+    )
 
     verified_addendum = resolve_epi_claim(
         result.get("epi_claim_candidate", ""), _verify_epi_claim_via_search
