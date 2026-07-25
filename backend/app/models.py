@@ -22,7 +22,7 @@ class Finding(BaseModel):
     """
     test_name: str
     value: str
-    reference_range: str
+    reference_range: str = ""
     status: Literal["normal", "abnormal"]
     significance: str
     # Deterministic, computed in Python from value + reference_range (see
