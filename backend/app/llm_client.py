@@ -58,23 +58,50 @@ def _verify_epi_claim_via_search(claim: str) -> tuple[bool, str | None]:
         return False, None
 
 
+def _lean_schema(schema: dict) -> dict:
+    """Strips 'description' strings from a copy of the schema before it's
+    sent to the model. Those descriptions are written for us (documentation
+    of intent, e.g. in models.py), not strictly needed by the model — the
+    same instructions already live in ANALYSIS_SYSTEM's prose. Cuts real
+    input tokens on every single call, which matters on Groq's free
+    on-demand tier: its TPM (tokens-per-minute) limit is low enough that
+    the input alone can matter, not just max_tokens."""
+    if isinstance(schema, dict):
+        return {
+            k: _lean_schema(v)
+            for k, v in schema.items()
+            if k != "description"
+        }
+    if isinstance(schema, list):
+        return [_lean_schema(v) for v in schema]
+    return schema
+
+
+_LEAN_ANALYSIS_SCHEMA = _lean_schema(ANALYSIS_JSON_SCHEMA)
+
+
 def _call_groq_analysis(report_text: str, location_context: str, extra_instruction: str = "") -> dict:
     system = (
         ANALYSIS_SYSTEM
         + extra_instruction
         + "\n\nReturn a JSON object that conforms exactly to this JSON Schema "
         + "(same keys, same nesting):\n"
-        + json.dumps(ANALYSIS_JSON_SCHEMA)
+        + json.dumps(_LEAN_ANALYSIS_SCHEMA)
     )
     response = _client.chat.completions.create(
         model=_settings.analysis_model,
         temperature=0.2,
-        # Was 4000. Findings now also carry reference_range per item, which
-        # pushed reports with many tests close enough to the old ceiling
-        # that the model would finish `findings`/`premium_preview`, close
-        # the JSON object, and never reach the schema's last fields
-        # (starter_suggestions, disclaimer) — valid JSON, just incomplete.
-        max_tokens=7000,
+        # Was 4000, briefly 7000, then 5000. Groq's rate limiter appears to
+        # count the full reserved max_tokens against TPM up front, not just
+        # actual usage — so even 5000 alone eats most of an 8000/minute
+        # budget before the system prompt or report text are counted at
+        # all. Back to 4000, combined with the leaner schema above (saves
+        # input tokens) and the backfill-defaults below (graceful
+        # degradation if a huge report still truncates) — this is the best
+        # balance achievable in code. The actual ceiling is an account
+        # limit: add a payment method at console.groq.com/settings/billing
+        # to move to the Developer tier before this matters at real volume.
+        max_tokens=4000,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": system},
