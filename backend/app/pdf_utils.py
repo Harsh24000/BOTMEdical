@@ -5,7 +5,15 @@ import groq
 from pypdf import PdfReader
 from .config import get_settings
 
-MAX_CHARS = 200_000  # generous cap; lab reports are far smaller than this
+MAX_CHARS = 14_000  # ~3500 tokens. Was 200,000 — that figure was about
+# preventing pathologically huge inputs, not about actually fitting a real
+# rate-limit budget. Groq's free on-demand tier caps openai/gpt-oss-120b at
+# 8000 tokens/minute (TPM), and that limit appears to count the full
+# reserved max_tokens (4000, see llm_client.py) up front — leaving only
+# ~4000 tokens total for the system prompt/schema + this report text
+# before a single call can 413. This cap keeps a large multi-page report
+# from being the thing that blows that budget on its own; the account-level
+# fix is upgrading the Groq tier (console.groq.com/settings/billing).
 
 # Cap the longest side of any rendered OCR image to this many pixels.
 # Fixing DPI alone (e.g. dpi=150) breaks on PDFs with abnormal page sizes —
