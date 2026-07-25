@@ -46,7 +46,8 @@ header h1 {
 
 .centered {
   max-width: 620px;
-  margin: 40px auto;
+  margin: 40px 0;
+  padding: 0 1.5rem;
 }
 
 .upload h2 {
@@ -77,6 +78,7 @@ header h1 {
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   align-items: start;
+  padding: 24px 1.5rem;
 }
 @media (max-width: 900px) {
   .workspace {
