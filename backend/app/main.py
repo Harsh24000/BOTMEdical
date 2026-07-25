@@ -1,6 +1,7 @@
 import uuid
 
 import groq
+import pydantic
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -58,7 +59,14 @@ async def upload_report(
     session = Session(session_id=session_id, report_text=report_text, analysis=analysis)
     save_session(session)
 
-    return UploadResponse(session_id=session_id, analysis=analysis)
+    try:
+        return UploadResponse(session_id=session_id, analysis=analysis)
+    except pydantic.ValidationError as exc:
+        # The LLM's JSON-mode output doesn't 100% guarantee every declared
+        # schema field is present on every item — if that ever happens
+        # again, surface exactly which field failed instead of an opaque
+        # 500 with no detail (as this class of bug did before this fix).
+        raise HTTPException(502, f"Analysis produced an invalid response: {exc}") from exc
 
 
 @app.post("/api/chat")
