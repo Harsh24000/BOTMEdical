@@ -118,6 +118,21 @@ def analyze_report(report_text: str, location: str | None = None) -> dict:
     result["alerts"] = strip_alert_numbers(result.get("alerts", []))
     result["premium_preview"] = truncate_preview_lines(result.get("premium_preview", []))
 
+    # Defensive normalization: JSON-mode schema adherence from the LLM
+    # isn't 100% guaranteed. A model default in models.py only helps when a
+    # key is MISSING — if the LLM returns an explicit null for a string
+    # field, Pydantic still rejects None as invalid, and since the FastAPI
+    # endpoint validates via response_model, that turns into an opaque 500
+    # for the whole upload rather than a clear error. Coerce every string
+    # field that's allowed to be "unknown" back to "" here, before anything
+    # downstream (including Pydantic) ever sees it.
+    if result.get("patient_name") is None:
+        result["patient_name"] = ""
+    for finding in result.get("findings", []):
+        for key in ("test_name", "value", "reference_range", "significance"):
+            if finding.get(key) is None:
+                finding[key] = ""
+
     verified_addendum = resolve_epi_claim(
         result.get("epi_claim_candidate", ""), _verify_epi_claim_via_search
     )
