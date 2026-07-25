@@ -2,9 +2,7 @@ import { useState } from "react";
 import ReportUpload from "./components/ReportUpload";
 import AnalysisPanel from "./components/AnalysisPanel";
 import Chat from "./components/Chat";
-import PremiumHook from "./components/PremiumHook";
 import WhyUpgradeModal from "./components/WhyUpgradeModal";
-import WhyUpgradeCard from "./components/WhyUpgradeCard";
 import SiteHeader from "./components/SiteHeader";
 import SidebarNav from "./components/SidebarNav";
 import HeroHeader from "./components/HeroHeader";
@@ -64,15 +62,6 @@ export default function App() {
                 starterSuggestions={result.analysis.starter_suggestions}
                 onUpgrade={handleUpgradeClick}
               />
-              <div style={{ marginTop: "1.5rem" }}>
-                <WhyUpgradeCard onUpgrade={handleUpgradeClick} />
-              </div>
-              <div style={{ marginTop: "1.5rem" }}>
-                <PremiumHook
-                  previewLines={result.analysis.premium_preview}
-                  onUpgrade={handleUpgradeClick}
-                />
-              </div>
             </section>
           </main>
         )}
