@@ -11,7 +11,7 @@ interface Props {
 const SESSION_SECONDS = 120;
 const SUGGESTIONS_MARKER = "|SUGGESTIONS|";
 
-/** Splits Dr. Gyan's raw reply into the answer text and its follow-up
+/** Splits Lumi's raw reply into the answer text and its follow-up
  * suggestion lines, so the marker never renders as literal text. */
 function parseAssistantMessage(content: string): { text: string; suggestions: string[] } {
   const idx = content.indexOf(SUGGESTIONS_MARKER);
@@ -154,7 +154,7 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
           </div>
           <div>
             <div style={{ color: "#ffffff", fontWeight: 800, fontSize: "0.95rem", lineHeight: 1.2 }}>
-              Dr. Gyan AI
+              Lumi AI
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
               <span style={{ width: "6px", height: "6px", borderRadius: "999px", background: "#34d399" }} />
@@ -178,7 +178,7 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
       <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
         {messages.length === 0 && !showSuggestions && (
           <p style={{ color: "#94a3b8", fontSize: "0.95rem", textAlign: "center", marginTop: "2rem" }}>
-            Ask Dr. Gyan anything about your results.
+            Ask Lumi anything about your results.
           </p>
         )}
 
@@ -323,7 +323,7 @@ export default function Chat({ sessionId, starterSuggestions, onUpgrade }: Props
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={locked ? "Ask Dr. Gyan anything..." : "Ask about your results..."}
+          placeholder={locked ? "Ask Lumi anything..." : "Ask about your results..."}
           disabled={loading || locked}
           style={{
             flex: 1,
