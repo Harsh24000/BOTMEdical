@@ -82,7 +82,7 @@ async def chat_endpoint(req: ChatRequest):
         # 402 Payment Required — no payment provider wired in yet, this is
         # the gate stub. Frontend catches this status and shows the
         # upgrade CTA instead of the chat input.
-        raise HTTPException(402, "Free question limit reached. Upgrade to keep chatting with Dr. Gyan.")
+        raise HTTPException(402, "Free question limit reached. Upgrade to keep chatting with Lumi.")
 
     # stream_chat yields string chunks directly
     return StreamingResponse(
