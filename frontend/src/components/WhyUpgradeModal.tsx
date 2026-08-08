@@ -38,7 +38,7 @@ const FEATURES = [
   {
     icon: "🩺",
     title: "Full Smart Report",
-    body: "The complete clinical analysis behind the free preview, plus unlimited questions for Dr. Gyan.",
+    body: "The complete clinical analysis behind the free preview, plus unlimited questions for Lumi.",
   },
 ];
 
