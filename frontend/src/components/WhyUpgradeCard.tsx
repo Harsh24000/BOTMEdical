@@ -12,7 +12,7 @@ const BENEFITS = [
     body: "Explore your body metrics in 3D visualization.",
   },
   {
-    title: "Priority Dr. Gyan AI",
+    title: "Priority Lumi AI",
     body: "Unlimited questions and deep clinical insights.",
   },
 ];
